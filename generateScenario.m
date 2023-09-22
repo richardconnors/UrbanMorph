@@ -175,31 +175,33 @@ T_Passenger = table(passenger_ID, passenger_X, passenger_Y, passenger_StationID,
 % ====== GENERATE BUS STOPS
 % Grid of all legally viable bus stop locations
 % BS grid separation needs to match max walking distance
-if 0.5*BS_separation*sqrt(2)>maxWalkingDist,   disp('Warning: BS separation >> walking distance'); end
+if 0.5*BS_separation*sqrt(2)>maxWalkingDist,   disp('Warning: max BS separation > walking distance'); end
 
-% generate BS over grid extending to all pax locations
-% extent = max(abs(pax_XY(:))); % distance in m across all pax locations
-% BS_x = x0-extent-BS_separation:BS_separation:x0+extent+BS_separation;
-% BS_y = y0-extent-BS_separation:BS_separation:y0+extent+BS_separation;
-biggestX = max(abs(pax_XY(:,1)));
-BS_x = unique([0:-BS_separation:-biggestX-BS_separation,0:BS_separation:biggestX+BS_separation]);
-BS_x = BS_x(BS_x>=min(pax_XY(:,1))-BS_separation);
-BS_x = BS_x(BS_x<=max(pax_XY(:,1))+BS_separation);
-
-biggestY = max(abs(pax_XY(:,2)));
-BS_y = unique([0:-BS_separation:-biggestY-BS_separation,0:BS_separation:biggestY+BS_separation]);
-BS_y = BS_y(BS_y>=min(pax_XY(:,2))-BS_separation);
-BS_y = BS_y(BS_y<=max(pax_XY(:,2))+BS_separation);
-
-
-[BS_X,BS_Y] = meshgrid(BS_x,BS_y);
+% get bounding box encompassing pax locations
+minX = min(pax_XY(:,1)) - BS_separation;
+maxX = max(pax_XY(:,1)) + BS_separation;
+minY = min(pax_XY(:,2)) - BS_separation;
+maxY = max(pax_XY(:,2)) + BS_separation;
+% Generate a regular square grid of points within the bounding box
+[BS_X,BS_Y] = meshgrid(minX:BS_separation:maxX, minY:BS_separation:maxY);
+% Convert the grid points to a list of [x, y] coordinates
 BS_XY = [BS_X(:),BS_Y(:)];
 
-% remove potential bus stops more than walking distance away from pax
+% for each customer find nearest meeting point
+% check within walking distance
+[nearestBS,dist] = dsearchn(BS_XY,pax_XY);
+paxMissed = dist>maxWalkingDist;
+
+% remove potential bus stops more than walking distance away from any pax
 % for each bus stop search amongst ALL pax locations to find nearest pax
 % index those BS with nearest pax within maxWalkingDist
 [~,dist] = dsearchn(pax_XY,BS_XY);
 BSinCH = dist<=maxWalkingDist;
+% check that every BS that was the closest to a person is still included
+if ~all(BSinCH(nearestBS))
+  disp('Closest BS has been removed'); keyboard
+end
+
 % find bus stops inside convex hull of pax locations (with 100m tolerance)
 % BSinCH = inhull(BS_XY,pax_XY,[],100);
 nBS = sum(BSinCH);
@@ -239,12 +241,13 @@ if PLOTFLAG
 
   figure; clf;
   % bus stop grid not being considered
-  % scatter(BS_XY(~BSinCH,1),BS_XY(~BSinCH,2),25,0.9*[1,1,1],'+');
+  %   scatter(BS_XY(~BSinCH,1),BS_XY(~BSinCH,2),25,0.9*[1,1,1],'+');
   hold on
   % bus stops being considered
   scatter(BS_XY(BSinCH,1),BS_XY(BSinCH,2),25,0.1*[1,1,1],'+');
   % paseenger locations with number of departure labelled
   scatter(pax_XY(:,1),pax_XY(:,2),200,'r.');
+
   % plot departure number if not too many pax
   if nPax < 100
     dx = 0; dy = .02; % displacement so the text does not overlay the data points
@@ -264,7 +267,13 @@ if PLOTFLAG
     sprintf('Chargers [%d]',nCharger)});
   xlabel('X coordinate (km)'); ylabel('Y coordinate (km)')
 
-  % OLD TITLE
+  if any(paxMissed)
+    disp('These customers cant reach any meeting point:');
+    disp(pax_XY(paxMissed,:))
+    scatter(pax_XY(paxMissed,1),pax_XY(paxMissed,2),200,'m*');
+  end
+
+  % TITLE that notes various settings 
   % if nStation>1
   %   title(sprintf('Station Gap = %.2f. Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
   %     Station_separation,BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
@@ -273,7 +282,7 @@ if PLOTFLAG
   %     BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
   % end
 
-  % draw circles around each passenger location
+  % draw circles around each passenger location of max walking distance
   % h_circles = viscircles(pax_XY, maxWalkingDist*ones(size(pax_XY,1),1), 'color', [1 0.9 0.9]);
 
 end
