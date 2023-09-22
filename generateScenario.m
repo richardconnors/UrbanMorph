@@ -239,7 +239,7 @@ if PLOTFLAG
 
   figure; clf;
   % bus stop grid not being considered
-  scatter(BS_XY(~BSinCH,1),BS_XY(~BSinCH,2),25,0.9*[1,1,1],'+');
+  % scatter(BS_XY(~BSinCH,1),BS_XY(~BSinCH,2),25,0.9*[1,1,1],'+');
   hold on
   % bus stops being considered
   scatter(BS_XY(BSinCH,1),BS_XY(BSinCH,2),25,0.1*[1,1,1],'+');
@@ -255,17 +255,23 @@ if PLOTFLAG
   % charger locations
   scatter(charger_XY(:,1),charger_XY(:,2),80,'filled','^','green');
   axis equal
-  legend({sprintf('(BusStop) [%d]',size(BS_XY,1)-nBS),...
-    sprintf('BusStop [%d]',nBS), sprintf('Pax [%d]',nPax),'Station',...
-    sprintf('Charger [%d]',nCharger)});
 
-  if nStation>1
-    title(sprintf('Station Gap = %.2f. Bus Stop Gap= %.2f. \n Walk Dist = %.2f. Pax radius =  [%.2f,%.2f]',...
-      Station_separation,BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
-  else
-    title(sprintf('Bus Stop Gap= %.2f. Walk Dist = %.2f. Pax radius = [%.2f,%.2f]',...
-      BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
-  end
+  % legend({sprintf('Potential Meeting Points [%d]',size(BS_XY,1)-nBS),...
+  %   sprintf('Active Meeting Point [%d]',nBS), sprintf('Pax [%d]',nPax),'Depot',...
+  %   sprintf('Charger [%d]',nCharger)});
+
+  legend({sprintf('Meeting Points [%d]',nBS), sprintf('Customers [%d]',nPax),'Depot',...
+    sprintf('Chargers [%d]',nCharger)});
+  xlabel('X coordinate (km)'); ylabel('Y coordinate (km)')
+
+  % OLD TITLE
+  % if nStation>1
+  %   title(sprintf('Station Gap = %.2f. Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
+  %     Station_separation,BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
+  % else
+  %   title(sprintf('Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
+  %     BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
+  % end
 
   % draw circles around each passenger location
   % h_circles = viscircles(pax_XY, maxWalkingDist*ones(size(pax_XY,1),1), 'color', [1 0.9 0.9]);

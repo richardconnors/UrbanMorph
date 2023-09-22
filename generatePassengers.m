@@ -1,7 +1,7 @@
 function X = generatePassengers(x0, y0, minRadius, maxRadius, nPax, minPaxDist, maxIter)
 % around centre [x0,y0] normally distributed within (rough) extent = radius
 % (radius = 3*std dev of normal)
-exponentialDecayFlag = 1;
+exponentialDecayFlag = 0;
 % check of inputs mostly for testing
 if ~nargin
   x0 = 0; y0 = 0; % length of square sides in m

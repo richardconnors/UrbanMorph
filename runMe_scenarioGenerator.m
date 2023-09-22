@@ -33,17 +33,17 @@
 
 nTransitStations = 1;
 Station_separation = 1; % distance between multiple stations 
-nPassengers = 100; % number passengers to generate
+nPassengers = 600; % number passengers to generate
 % Passengers will be generated uniformly distributed in an annulus around each station
 % minRadius and maxRadius can have single value = used for all stations
 % OR can be a row vector size [1 x nTransitStations] 
-Pax_minRadius = 0.5; % min radius away from station for passenger locations
-Pax_maxRadius = 17.5; % max radius around station for passenger locations
+Pax_minRadius = 1.5; % min radius away from station for passenger locations
+Pax_maxRadius = 6.0; % max radius around station for passenger locations
 paxSeparation = 0.05; % min distance between passengers
 BS_separation = 1; % spacing for grid of potential bus stop locations
-maxWalkingDist = BS_separation*sqrt(2)/2; %
-nCharger  = 4; % how many chargers PER TOWN/TRANSIT STATION.
-charger_radius = 2; % chargers located on circle around each town centre
+maxWalkingDist = 1.2;%BS_separation*sqrt(2)/2; %
+nCharger  = 2; % how many chargers PER TOWN/TRANSIT STATION.
+charger_radius = 1; % chargers located on circle around each town centre
 demandPeakness = 1; % 0 = uniform. 1 = peaked in middle
 PLOTFLAG = 1; % plots the network data
 
