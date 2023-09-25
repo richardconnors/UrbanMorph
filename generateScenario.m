@@ -1,4 +1,6 @@
-function generateScenario(nStation, Station_separation, nPax, Pax_minRadius, Pax_maxRadius, paxSeparation, maxWalkingDist, BS_separation, nCharger, charger_radius, demandPeakness, PLOTFLAG)
+function generateScenario(nStation, Station_separation, nPax, Pax_minRadius,...
+  Pax_maxRadius, paxSeparation, maxWalkingDist, BS_separation, nCharger,...
+  charger_radius, demandPeakness, PLOTFLAG)
 % Generate scenarios for MEVRST algorithms to tackle
 % area of interest will be a rectangle its size will be derived from the location of data points below
 % set the centre at [0,0]
@@ -221,13 +223,13 @@ T_depot = table(depot_ID,depot_X,depot_Y);
 
 % % ====== SAVE TO TEXT FILES
 % % note by default saves 15 decimal places which seems excessive hence use round
-% writetable(T_depTimes,[saveFolder '\transitTimetable.txt'],'Delimiter',',');
-% writetable(T_Station,[saveFolder '\stationXY.txt'],'Delimiter',',')
-% writetable(T_Charger,[saveFolder '\chargerXY.txt'],'Delimiter',',')
+% writetable(T_depTimes,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
+% writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
+% writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
 % % pax data columns: x-cood, y-cood, stationID, depTimeIndex
-% writetable(T_Passenger,[saveFolder '\passengerData.txt'],'Delimiter',',')
-% writetable(T_busStop,[saveFolder '\busStopXY.txt'],'Delimiter',',')
-% writetable(T_depot,[saveFolder '\depotXY.txt'],'Delimiter',',')
+% writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
+% writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
+% writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
 
 % ====== end SAVE TO TEXT FILES
 
