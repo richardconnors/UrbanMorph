@@ -98,28 +98,31 @@ headwayX = 15;
 % generate here for now - could load from elsewhere
 Tstart = datetime(2022,10,3,6,0,0); Tstart.Format = 'yyyy-MM-dd HH:mm';
 Tend = datetime(2022,10,3,10,00,0); Tend.Format = 'yyyy-MM-dd HH:mm';
-
-% First station timetable
 headway = headway1;
-thisClockTimes = (Tstart:minutes(headway):Tend)';  % clock time departures
+
+% these are the clock time departures
+thisClockTimes = (Tstart:minutes(headway):Tend)'; 
 nDeps = size(thisClockTimes,1);
 TstartRel = headway;
-thisRelTimes = (TstartRel:headway:nDeps*headway)'; % relative time departures in minutes
+thisRelTimes = (TstartRel:headway:nDeps*headway)';
 allStationDeps = table(ones(nDeps,1),thisClockTimes,thisRelTimes-bufferT,thisRelTimes,'VariableNames',{'StationID','DepClockTime','ei','li'});
+
 
 for t = 2:nStation
   headway = headwayX;
-  Tstart = Tstart+minutes(depOffset); % increments by depOffset each time round the loop
-  TstartRel = TstartRel + depOffset; % increments by depOffset each time round the loop
+  Tstart = Tstart+minutes(depOffset);
+  TstartRel = 
   thisClockTimes = (Tstart+minutes(depOffset):minutes(headway):Tend)'; 
   nDeps = size(thisClockTimes,1);
-  thisRelTimes = TstartRel+(0:nDeps-1)'*headway;
-  thisStationDeps = table(t*ones(nDeps,1),thisClockTimes,thisRelTimes-bufferT,thisRelTimes,'VariableNames',{'StationID','DepClockTime','ei','li'});
-  allStationDeps = [allStationDeps;thisStationDeps];
+  thisRelTimes = (headway:headway:nDeps*headway)';
+
+  thisDeps = (Tstart+(t-1)*minutes(depOffset):headway:Tend)';
+  thisCol = table(thisDeps,'VariableNames',{strcat('Station',num2str(t,'%02d'))});
+  allStationDeps = [allStationDeps,thisCol];
 end
 
-allStationDeps = sortrows(allStationDeps,'li');
-allStationDeps.layer = (1:height(allStationDeps))';
+
+
 
 % ====== chargers
 charger_XY = station_XY; % if only 1 charger per station
@@ -168,7 +171,7 @@ nPax = size(pax_XY,1);
 % demandPeakness: 0 = uniform, 1 = very peaked demand
 pax_depT = [];
 for t = 1:nStation
-  thisDeps = allStationDeps{allStationDeps.StationID==t,'li'};
+  thisDeps = allStationDeps{:,t}; thisDeps=thisDeps(~isnat(thisDeps));
   nDeps = length(thisDeps);
 
   % what prob for each departure to get desired demand profile?
