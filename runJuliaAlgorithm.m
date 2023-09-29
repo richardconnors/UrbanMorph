@@ -9,7 +9,7 @@
 if strcmpi(strtrim(thisPC),"PP0695") % this is my laptop
   dirLocation = "C:\Users\richard.connors\Dropbox\_LuxWork\MEVERST\code\TY_Flexbus\";
 else
-  dirLocation = "Q:\Dropbox\_LuxWork\MEVERST\code\TY_Flexbus\";
+  dirLocation = "Q:\REPOS\flexbus_v0.6\";
 end
 
 % so now I have the location of the "main folder" I concatenate the
@@ -35,6 +35,7 @@ for ff = 1%:length(all_data) % for each .txt file in the data_dir
   F1 = join(['"',replace(data_dir, "\","\\"),all_data(ff).name,'"'],"");
   F2 = join(['"',replace(data_dir, "\","\\"),data_timetable(1).name,'"'],"");
   % run JULIA via the windows command
+  setpwd(dirLocation) % because inside Julia it assumes we are in the REPO
   [status,cmdout]=system(join(["julia", code_main, F1, F2]))
 
   %  Here are some hard-coded filenames if needed to check things are

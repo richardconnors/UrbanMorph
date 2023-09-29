@@ -1,5 +1,5 @@
 function X = generateCrowd(sideLength, nPax, minDist, nIter)
-
+% JOS COMMENT
 if ~nargin
   sideLength = 1000; % <-- Choose length of square sides
   nPax = 50; % <-- Choose number of points
