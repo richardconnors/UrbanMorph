@@ -1,4 +1,6 @@
-function generateScenario(nStation, Station_separation, nPax, Pax_minRadius, Pax_maxRadius, paxSeparation, maxWalkingDist, BS_separation, nCharger, charger_radius, demandPeakness, PLOTFLAG)
+function generateScenario(nStation, Station_separation, nPax, Pax_minRadius,...
+  Pax_maxRadius, paxSeparation, maxWalkingDist, BS_separation, nCharger,...
+  charger_radius, demandPeakness, PLOTFLAG)
 % Generate scenarios for MEVRST algorithms to tackle
 % area of interest will be a rectangle its size will be derived from the location of data points below
 % set the centre at [0,0]
@@ -36,8 +38,8 @@ params.nCharger = nCharger;
 params.chargerRadius = charger_radius;
 params.demandPeakness = demandPeakness;
 params = orderfields(params);
-writetable(struct2table(params),[saveFolder '\parameters.txt'],'Delimiter',',');
-writestruct(params,[saveFolder '\parameters.xml']);
+writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
+% writestruct(params,[saveFolder '\parameters.xml']);
 
 
 % ====== BUS FLEET
@@ -66,7 +68,7 @@ busFleet2 = table(busType,maxPax,maxKWH,minSOC,maxSOC,SOC,consumption);
 busFleet2 = repmat(busFleet2,nBus,1);
 busFleet2.SOC = linspace(20,80,nBus)'; % even spacing of bus SOC from 20 -> 80
 busFleet = [busFleet1;busFleet2];
-writetable(busFleet,[saveFolder '\busFleet.txt'],'Delimiter',',');
+writetable(busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
 
 % ====== START network geometry
 rng default % make randomness repeatable
@@ -88,19 +90,36 @@ station_ID = (1:nStation)';
 T_Station = table(station_ID, station_X,station_Y);
 
 % ======== DEPARTURES FROM EACH STATION ??
+bufferT = 15;
+headway1 = 20;
+depOffset = 10;
+headwayX = 15;
 % for each transit station we have a list of departure times
 % generate here for now - could load from elsewhere
 Tstart = datetime(2022,10,3,6,0,0); Tstart.Format = 'yyyy-MM-dd HH:mm';
 Tend = datetime(2022,10,3,10,00,0); Tend.Format = 'yyyy-MM-dd HH:mm';
-headway = minutes(20);
-T_depTimes = table((Tstart:headway:Tend)','VariableNames',{'Station01'}); % dep times at Station 1
-nDeps = size(T_depTimes,1);
+
+% First station timetable
+headway = headway1;
+thisClockTimes = (Tstart:minutes(headway):Tend)';  % clock time departures
+nDeps = size(thisClockTimes,1);
+TstartRel = headway;
+thisRelTimes = (TstartRel:headway:nDeps*headway)'; % relative time departures in minutes
+allStationDeps = table(ones(nDeps,1),thisClockTimes,thisRelTimes-bufferT,thisRelTimes,'VariableNames',{'StationID','DepClockTime','ei','li'});
+
 for t = 2:nStation
-  thisDeps = (Tstart+(t-1)*minutes(10):headway:Tend)';
-  thisDeps = [thisDeps;NaT(nDeps-length(thisDeps),1)]; % ensure all cols same length
-  thisCol = table(thisDeps,'VariableNames',{strcat('Station',num2str(t,'%02d'))});
-  T_depTimes = [T_depTimes,thisCol];
+  headway = headwayX;
+  Tstart = Tstart+minutes(depOffset); % increments by depOffset each time round the loop
+  TstartRel = TstartRel + depOffset; % increments by depOffset each time round the loop
+  thisClockTimes = (Tstart+minutes(depOffset):minutes(headway):Tend)'; 
+  nDeps = size(thisClockTimes,1);
+  thisRelTimes = TstartRel+(0:nDeps-1)'*headway;
+  thisStationDeps = table(t*ones(nDeps,1),thisClockTimes,thisRelTimes-bufferT,thisRelTimes,'VariableNames',{'StationID','DepClockTime','ei','li'});
+  allStationDeps = [allStationDeps;thisStationDeps];
 end
+
+allStationDeps = sortrows(allStationDeps,'li');
+allStationDeps.layer = (1:height(allStationDeps))';
 
 % ====== chargers
 charger_XY = station_XY; % if only 1 charger per station
@@ -149,7 +168,7 @@ nPax = size(pax_XY,1);
 % demandPeakness: 0 = uniform, 1 = very peaked demand
 pax_depT = [];
 for t = 1:nStation
-  thisDeps = T_depTimes{:,t}; thisDeps=thisDeps(~isnat(thisDeps));
+  thisDeps = allStationDeps{allStationDeps.StationID==t,'li'};
   nDeps = length(thisDeps);
 
   % what prob for each departure to get desired demand profile?
@@ -221,13 +240,13 @@ T_depot = table(depot_ID,depot_X,depot_Y);
 
 % % ====== SAVE TO TEXT FILES
 % % note by default saves 15 decimal places which seems excessive hence use round
-% writetable(T_depTimes,[saveFolder '\transitTimetable.txt'],'Delimiter',',');
-% writetable(T_Station,[saveFolder '\stationXY.txt'],'Delimiter',',')
-% writetable(T_Charger,[saveFolder '\chargerXY.txt'],'Delimiter',',')
-% % pax data columns: x-cood, y-cood, stationID, depTimeIndex
-% writetable(T_Passenger,[saveFolder '\passengerData.txt'],'Delimiter',',')
-% writetable(T_busStop,[saveFolder '\busStopXY.txt'],'Delimiter',',')
-% writetable(T_depot,[saveFolder '\depotXY.txt'],'Delimiter',',')
+writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
+writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
+writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
+% pax data columns: x-cood, y-cood, stationID, depTimeIndex
+writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
+writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
+writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
 
 % ====== end SAVE TO TEXT FILES
 
