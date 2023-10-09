@@ -12,8 +12,7 @@ else
   dirLocation = "Q:\REPOS\flexbus_v0.6\";
 end
 
-% so now I have the location of the "main folder" I concatenate the
-% filename:
+% so now I have the location of the "main folder" I concatenate the filename:
 % the main JULIA file
 code_main = join([dirLocation, 'example.jl'],""); % join strings with no space
 

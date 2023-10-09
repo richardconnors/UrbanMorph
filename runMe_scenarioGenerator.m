@@ -31,7 +31,7 @@
 
 
 
-nTransitStations = 4;
+nTransitStations = 10;
 Station_separation = 10; % distance between multiple stations 
 nPassengers = 500; % number passengers to generate
 % Passengers will be generated uniformly distributed in an annulus around each station
