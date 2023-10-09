@@ -1,13 +1,13 @@
 
 % Set the location of JULIA code and data files
-% you can just do 
+% you can just do
 % dirLocation = "C:\blah\blah\blah"
 
 % For me this depends on whether I am using my home PC or work laptop so I
 % check the name of the computer and set the location accordingly
 [~, thisPC] = system ('hostname');
 if strcmpi(strtrim(thisPC),"PP0695") % this is my laptop
-  dirLocation = "C:\Users\richard.connors\Dropbox\_LuxWork\MEVERST\code\TY_Flexbus\";
+  dirLocation = "C:\Users\richard.connors\Documents\REPOS\flexbus_v0.6\";
 else
   dirLocation = "Q:\REPOS\flexbus_v0.6\";
 end
@@ -18,25 +18,40 @@ end
 code_main = join([dirLocation, 'example.jl'],""); % join strings with no space
 
 % the directory with all the data files I want to cycle through
-data_dir = join([dirLocation, 'data\non_peak\'],"");
-% grab all the .txt files in this data_dir
-all_data = dir(join([data_dir '*.txt'],""));
-% grab what should be the ONLY .csv file in the folder
-data_timetable = dir(join([data_dir '*.csv'],""));
+data_dir = join([dirLocation, 'data\'],"");
 
-% NOTE: the for loop should run TY's JULIA code for each .txt file
-% However I guess each time this would overwrite the results from the
-% previous run!
-% Right now this is not a problem since it doesn't even run once 🤣
-% TO DO: update results .csv files to include name of calling .txt file
+% how many scenario drectories are in this folder?
+% Specify the directory you want to search (replace with your desired path)
+subdirectories = dir(data_dir);
+subdirectories = subdirectories([subdirectories.isdir]);
 
-for ff = 1%:length(all_data) % for each .txt file in the data_dir
+% Define the pattern for matching directory names
+pattern = 'P(\d+)S(\d+)C(\d+)DP([\d.]+)';
+% Initialize an empty cell array to store matching directory names
+matchingDirectories = {};
+% Loop through the subdirectories and check if they match the pattern
+for i = 1:length(subdirectories)
+  dirname = subdirectories(i).name;
+  if regexp(dirname, pattern)
+    matchingDirectories{end+1} = dirname;
+  end
+end
+
+% Display the list of matching directories
+disp('Matching Directories:');
+disp(matchingDirectories');
+nDir = length(matchingDirectories);
+
+data_dir = replace(data_dir, "\","\\");
+
+
+for ff = 1%:nDir % for each .txt file in the data_dir
   % need the path with double \\ for JULIA
-  F1 = join(['"',replace(data_dir, "\","\\"),all_data(ff).name,'"'],"");
-  F2 = join(['"',replace(data_dir, "\","\\"),data_timetable(1).name,'"'],"");
+  F1 = join([data_dir,matchingDirectories{ff},'\\'],''); % join with no whitespace
   % run JULIA via the windows command
-  setpwd(dirLocation) % because inside Julia it assumes we are in the REPO
-  [status,cmdout]=system(join(["julia", code_main, F1, F2]))
+  RUN_STRING = join(["julia", code_main, F1])
+  cd(dirLocation) % because inside Julia it assumes we are in the REPO
+  [status,cmdout]=system(RUN_STRING)
 
   %  Here are some hard-coded filenames if needed to check things are
   %  working - you need to set the path for your computer of course!
