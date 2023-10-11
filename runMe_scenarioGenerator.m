@@ -31,14 +31,14 @@
 
 
 
-nTransitStations = 4;
-Station_separation = 10; % distance between multiple stations 
-nPassengers = 500; % number passengers to generate
+nTransitStations = 1;
+Station_separation = 1; % distance between multiple stations 
+nPassengers = 100; % number passengers to generate
 % Passengers will be generated uniformly distributed in an annulus around each station
 % minRadius and maxRadius can have single value = used for all stations
 % OR can be a row vector size [1 x nTransitStations] 
 Pax_minRadius = 1.5; % min radius away from station for passenger locations
-Pax_maxRadius = 10.0; % max radius around station for passenger locations
+Pax_maxRadius = 5.0; % max radius around station for passenger locations
 paxSeparation = 0.05; % min distance between passengers
 BS_separation = 1; % spacing for grid of potential bus stop locations
 maxWalkingDist = 1.2;%BS_separation*sqrt(2)/2; %
