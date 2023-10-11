@@ -2,6 +2,7 @@ function X = generatePassengers(x0, y0, minRadius, maxRadius, nPax, minPaxDist, 
 % around centre [x0,y0] normally distributed within (rough) extent = radius
 % (radius = 3*std dev of normal)
 exponentialDecayFlag = 0;
+sectorAngle = 2*pi; % default is whole disc
 % check of inputs mostly for testing
 if ~nargin
   x0 = 0; y0 = 0; % length of square sides in m
@@ -26,8 +27,9 @@ if exponentialDecayFlag
 end 
 
 
-t = 2*pi*rand(nPax,1);  
+t = sectorAngle*rand(nPax,1); 
 X = [x0 + r.*cos(t), y0 + r.*sin(t)];
+
 D = squareform(pdist(X)); D(1:nPax+1:end) = Inf; % set diagonal to be inf
 
 % check if separation between passenger locations violated.
@@ -40,7 +42,7 @@ while nConflicts>0 && count<maxIter
   if exponentialDecayFlag
     r = -log(exp(-decay*minRadius)-(exp(-decay*minRadius)-exp(-decay*maxRadius)).*rand)/decay;
   end
-  t = 2*pi*rand;
+  t = sectorAngle*rand;
   X(i(1),:) = [x0 + r.*cos(t), y0 + r.*sin(t)];
   %   X(i(1),:) = [x0,y0] + 0.3*maxRadius*randn(1,2);
   D = squareform(pdist(X)); D(1:nPax+1:end) = Inf; % set diagonal to be inf
