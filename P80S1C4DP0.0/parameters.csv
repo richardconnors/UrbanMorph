@@ -1,0 +1,2 @@
+busSpeed,busStopServiceTime,chargerRadius,demandPeakness,maxTransitWaitingTime,maxWalkingDist,nCharger,nPax,nStation,paxSeparation,walkingSpeed
+0.83,0.5,2,0,15,1.2,4,80,1,0.05,0.085

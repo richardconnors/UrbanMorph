@@ -136,6 +136,7 @@ charger_ID = (1:nCharger)';
 charger_X = round(charger_XY(:,1),5); % dont need more than 5 decimal places!
 charger_Y = round(charger_XY(:,2),5);
 charger_rate = 0.83*ones(nCharger,1); % kW/minute
+varTypes = {'double', 'double', 'double', 'double'};
 T_Charger = table(charger_ID,charger_X,charger_Y,charger_rate);
 
 % ====== generate passenger locations
@@ -236,8 +237,6 @@ depot_X = round(mean(busStop_X),5);
 depot_Y = round(mean(busStop_Y),5);
 T_depot = table(depot_ID,depot_X,depot_Y);
 
-
-
 % % ====== SAVE TO TEXT FILES
 % % note by default saves 15 decimal places which seems excessive hence use round
 writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
@@ -249,6 +248,68 @@ writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
 writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
 
 % ====== end SAVE TO TEXT FILES
+
+
+
+
+%=========================================================================
+% % ====== SAVE TO YUMENG FORMAT 2 FILES
+
+saveFolder = ['Q:\REPOS\Flexbus3_v0.7\data\urbanMorph\', sprintf('P%dS%dC%dDP%.1f',nPax,nStation,nCharger,demandPeakness)];
+if ~isfolder(saveFolder), mkdir(saveFolder); end
+
+yumeng_filename = sprintf('c-%d-bs-%d.txt',nPax,nBS);
+yumeng_file = [saveFolder,'\',yumeng_filename];
+
+
+
+tService = 0.5; busSpeed = 50/60; walkSpeed = 5.1/60;
+fileID = fopen(yumeng_file, 'w'); % 'w' means overwrite any existing content
+fprintf(fileID, '%d %d %d %d %.1f %.1f %.2f %.2f', nPax, nBS, nStation, busType, maxWalkingDist, tService, busSpeed, walkSpeed);
+for k = 1:busType
+  thisBus = busFleet(busFleet.busType==k,:);
+  nThisBus = sum(busFleet.busType==k);
+  thismin = thisBus.maxKWH(1).*thisBus.minSOC(1)./100; % use 1st row in subtable
+  thismax = thisBus.maxKWH(1).*thisBus.maxSOC(1)./100;
+  fprintf(fileID, '\n');
+  fprintf(fileID, '%d %d %.2f %.2f %.2f', nThisBus, thisBus.maxPax(1), thisBus.consumption(1), thismax, thismin);
+end
+fprintf(fileID, '\n');
+nDummies = 3; % something used for exact solution
+fprintf(fileID, '%d %.2f %d',nCharger, T_Charger.charger_rate(1), nDummies); 
+fprintf(fileID, '\n');
+fprintf(fileID, '0 %.1f %.1f',depot_X,depot_Y); % what is 3 indicating?????
+fclose(fileID);
+
+fileID = fopen(yumeng_file, 'a'); % 'w' means overwrite any existing content
+Y_Passenger = T_Passenger(:,[1,2,3,5]);
+writetable(Y_Passenger, yumeng_file, 'Delimiter', ' ', 'WriteVariableNames', false,'WriteMode','append');
+Y_busStop = T_busStop; Y_busStop.busStop_ID = Y_busStop.busStop_ID+nPax;
+writetable(Y_busStop, yumeng_file, 'Delimiter', ' ', 'WriteVariableNames', false, 'WriteMode', 'append');
+
+nRows = Y_busStop.busStop_ID(end); 
+rowNums = table((nRows+1:nRows+nStation)');
+Y_Station = [rowNums,T_Station(:,[2,3])];
+writetable(Y_Station, yumeng_file, 'Delimiter', ' ', 'WriteVariableNames', false, 'WriteMode', 'append');
+
+nRows = nRows+1+nStation;
+rowNums = table((nRows+1:nRows+nCharger)');
+Y_Charger = [rowNums,T_Charger(:,[2,3])];
+writetable(Y_Charger, yumeng_file, 'Delimiter', ' ', 'WriteVariableNames', false, 'WriteMode', 'append');
+fclose(fileID);
+
+YumengTimetable = allStationDeps(:,[1,3,4,5]);
+YumengTimetable.Properties.VariableNames = {'No',	'E',	'L',	'no_layer'};
+
+yumeng_timetable_csv = [saveFolder,'\', sprintf('c-%d-bs-%d.csv',nPax,nBS)];
+writetable(YumengTimetable,yumeng_timetable_csv,'Delimiter',',');
+
+% ====== end SAVE TO YUMENG
+%=========================================================================
+
+
+
+
 
 
 
