@@ -30,7 +30,7 @@
 % PLOTFLAG = 1; % plots the network data
 
 
-for k = 10:10:100
+for k = 125:25:500
   nTransitStations = 1;
   Station_separation = 1; % distance between multiple stations
   nPassengers = k; % number passengers to generate
