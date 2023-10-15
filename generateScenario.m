@@ -1,4 +1,4 @@
-function [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(nStation, Station_separation, nPax, Pax_minRadius,...
+function [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(saveData_UrbanMorph,nStation, Station_separation, nPax, Pax_minRadius,...
   Pax_maxRadius, paxSeparation, maxWalkingDist, BS_separation, nCharger,...
   charger_radius, demandPeakness, PLOTFLAG)
 % Generate scenarios for MEVRST algorithms to tackle
@@ -6,6 +6,7 @@ function [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T
 % set the centre at [0,0]
 
 arguments % declare arguments and supply default values
+  saveData_UrbanMorph string = '';
   nStation (1,1) double = 3;
   Station_separation (1,1) double = 3; % distance between multiple centres
   nPax (1,1) double = 50;
@@ -20,10 +21,7 @@ arguments % declare arguments and supply default values
   PLOTFLAG (1,1) logical = 1; % plot data (1) or not (0)?
 end
 
-% ===== SAVE LOCATION
-saveFolder = sprintf('P%dS%dC%dDP%.1f',nPax,nStation,nCharger,demandPeakness);
-if ~isfolder(saveFolder), mkdir(saveFolder); end
-
+SAVE_FLAG = 0;
 
 % ====== PARAMETERS
 params.maxWalkingDist = round(maxWalkingDist,5);
@@ -38,37 +36,28 @@ params.nCharger = nCharger;
 params.chargerRadius = charger_radius;
 params.demandPeakness = demandPeakness;
 params = orderfields(params);
-writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
-% writestruct(params,[saveFolder '\parameters.xml']);
 
 
 % ====== BUS FLEET
-busType = 1;
-maxPax = 10;
-maxKWH = 35.8; % kWh - does this correspond to 100% SOC or maxSOC?
+busType = 1; maxPax = 10; maxKWH = 35.8; % kWh - does this correspond to 100% SOC or maxSOC?
 minSOC = 10; % percent
 maxSOC = 80; % percent
-SOC = 20;
-consumption = 0.24; %kW.km
+SOC = 20; consumption = 0.24; %kW.km
 nBus = ceil(0.5*nPax*0.7/maxPax);
 busFleet1 = table(busType, maxPax, maxKWH, minSOC, maxSOC, SOC, consumption);
 busFleet1 = repmat(busFleet1,nBus,1);
 % distribute SOC amongst buses
 busFleet1.SOC = linspace(20,80,nBus)'; % even spacing of bus SOC from 20 -> 80
 
-busType = 2;
-maxPax = 20;
-maxKWH = 53.7; % kWh - does this correspond to 100% SOC or maxSOC?
+busType = 2; maxPax = 20; maxKWH = 53.7; % kWh - does this correspond to 100% SOC or maxSOC?
 minSoC = 10; % percent
 maxSoC = 80; % percent
-SoC = 20;
-consumption = 0.29; %kW.km
+SoC = 20; consumption = 0.29; %kW.km
 nBus = ceil(0.5*nPax*0.7/maxPax);
 busFleet2 = table(busType,maxPax,maxKWH,minSOC,maxSOC,SOC,consumption);
 busFleet2 = repmat(busFleet2,nBus,1);
 busFleet2.SOC = linspace(20,80,nBus)'; % even spacing of bus SOC from 20 -> 80
 T_busFleet = [busFleet1;busFleet2];
-writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
 
 % ====== START network geometry
 rng default % make randomness repeatable
@@ -111,7 +100,7 @@ for t = 2:nStation
   headway = headwayX;
   Tstart = Tstart+minutes(depOffset); % increments by depOffset each time round the loop
   TstartRel = TstartRel + depOffset; % increments by depOffset each time round the loop
-  thisClockTimes = (Tstart+minutes(depOffset):minutes(headway):Tend)'; 
+  thisClockTimes = (Tstart+minutes(depOffset):minutes(headway):Tend)';
   nDeps = size(thisClockTimes,1);
   thisRelTimes = TstartRel+(0:nDeps-1)'*headway;
   thisStationDeps = table(t*ones(nDeps,1),thisClockTimes,thisRelTimes-bufferT,thisRelTimes,'VariableNames',{'StationID','DepClockTime','ei','li'});
@@ -136,7 +125,6 @@ charger_ID = (1:nCharger)';
 charger_X = round(charger_XY(:,1),5); % dont need more than 5 decimal places!
 charger_Y = round(charger_XY(:,2),5);
 charger_rate = 0.83*ones(nCharger,1); % kW/minute
-varTypes = {'double', 'double', 'double', 'double'};
 T_Charger = table(charger_ID,charger_X,charger_Y,charger_rate);
 
 % ====== generate passenger locations
@@ -180,7 +168,7 @@ for t = 1:nStation
   pax_depT = [pax_depT; thisPaxDeps(:)];
 
 end
-passenger_ID = (1:nPax)'; 
+passenger_ID = (1:nPax)';
 passenger_X = round(pax_XY(:,1),5);
 passenger_Y = round(pax_XY(:,2),5);
 passenger_StationID = pax_stationID;
@@ -238,32 +226,39 @@ depot_Y = round(mean(busStop_Y),5);
 T_depot = table(depot_ID,depot_X,depot_Y);
 
 % % ====== SAVE TO TEXT FILES
-% % note by default saves 15 decimal places which seems excessive hence use round
-writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
-writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
-writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
-writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',')
-% pax data columns: x-cood, y-cood, stationID, depTimeIndex
-writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
-writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
-writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
+if SAVE_FLAG
+  % ===== SAVE LOCATION
+  saveFolder = [saveData_UrbanMorph, sprintf('P%dS%dC%dDP%.1f',nPax,nStation,nCharger,demandPeakness)];
+  if ~isfolder(saveFolder), mkdir(saveFolder); end
 
+  writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
+  writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
+  % % note by default saves 15 decimal places which seems excessive hence use round
+  writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
+  writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
+  writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
+  writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',')
+  % pax data columns: x-cood, y-cood, stationID, depTimeIndex
+  writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
+  writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
+  writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
+end
 % ====== end SAVE TO TEXT FILES
 
 
 
-% 
+%
 % %=========================================================================
 % % % ====== SAVE TO YUMENG FORMAT 2 FILES
-% 
+%
 % saveFolder = ['Q:\REPOS\Flexbus3_v0.7\data\urbanMorph\', sprintf('P%dS%dC%dDP%.1f',nPax,nStation,nCharger,demandPeakness)];
 % if ~isfolder(saveFolder), mkdir(saveFolder); end
-% 
+%
 % yumeng_filename = sprintf('c-%d-bs-%d.txt',nPax,nBS);
 % yumeng_file = [saveFolder,'\',yumeng_filename];
-% 
-% 
-% 
+%
+%
+%
 % tService = 0.5; busSpeed = 50/60; walkSpeed = 5.1/60;
 % fileID = fopen(yumeng_file, 'w'); % 'w' means overwrite any existing content
 % fprintf(fileID, '%d %d %d %d %.1f %.1f %.2f %.2f', nPax, nBS, nStation, busType, maxWalkingDist, tService, busSpeed, walkSpeed);
@@ -277,34 +272,34 @@ writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
 % end
 % fprintf(fileID, '\n');
 % nDummies = 3; % something used for exact solution
-% fprintf(fileID, '%d %.2f %d',nCharger, T_Charger.charger_rate(1), nDummies); 
+% fprintf(fileID, '%d %.2f %d',nCharger, T_Charger.charger_rate(1), nDummies);
 % fprintf(fileID, '\n');
 % fprintf(fileID, '0 %.1f %.1f',depot_X,depot_Y); % what is 3 indicating?????
 % fclose(fileID);
-% 
+%
 % fileID = fopen(yumeng_file, 'a'); % 'w' means overwrite any existing content
 % Y_Passenger = T_Passenger(:,[1,2,3,5]);
 % writetable(Y_Passenger, yumeng_file, 'Delimiter', ' ', 'WriteVariableNames', false,'WriteMode','append');
 % Y_busStop = T_busStop; Y_busStop.busStop_ID = Y_busStop.busStop_ID+nPax;
 % writetable(Y_busStop, yumeng_file, 'Delimiter', ' ', 'WriteVariableNames', false, 'WriteMode', 'append');
-% 
-% nRows = Y_busStop.busStop_ID(end); 
+%
+% nRows = Y_busStop.busStop_ID(end);
 % rowNums = table((nRows+1:nRows+nStation)');
 % Y_Station = [rowNums,T_Station(:,[2,3])];
 % writetable(Y_Station, yumeng_file, 'Delimiter', ' ', 'WriteVariableNames', false, 'WriteMode', 'append');
-% 
+%
 % nRows = nRows+1+nStation;
 % rowNums = table((nRows+1:nRows+nCharger)');
 % Y_Charger = [rowNums,T_Charger(:,[2,3])];
 % writetable(Y_Charger, yumeng_file, 'Delimiter', ' ', 'WriteVariableNames', false, 'WriteMode', 'append');
 % fclose(fileID);
-% 
+%
 % YumengTimetable = allStationDeps(:,[1,3,4,5]);
 % YumengTimetable.Properties.VariableNames = {'No',	'E',	'L',	'no_layer'};
-% 
+%
 % yumeng_timetable_csv = [saveFolder,'\', sprintf('c-%d-bs-%d.csv',nPax,nBS)];
 % writetable(YumengTimetable,yumeng_timetable_csv,'Delimiter',',');
-% 
+%
 % % ====== end SAVE TO YUMENG
 % %=========================================================================
 
@@ -316,9 +311,9 @@ writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
 
 % ======= PLOTTING DATA IF DESIRED =====================
 if PLOTFLAG
-%   figure; hh = histogram(pax_depT);
-%   hh.BinEdges = 0.5:nDeps+1.5; 
-%   title(sprintf('Departure Time Distribution [%.1f]', demandPeakness))
+  %   figure; hh = histogram(pax_depT);
+  %   hh.BinEdges = 0.5:nDeps+1.5;
+  %   title(sprintf('Departure Time Distribution [%.1f]', demandPeakness))
 
   figure; clf;
   % bus stop grid not being considered
@@ -354,7 +349,7 @@ if PLOTFLAG
     scatter(pax_XY(paxMissed,1),pax_XY(paxMissed,2),200,'m*');
   end
 
-  % TITLE that notes various settings 
+  % TITLE that notes various settings
   % if nStation>1
   %   title(sprintf('Station Gap = %.2f. Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
   %     Station_separation,BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
