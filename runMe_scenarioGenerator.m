@@ -35,10 +35,6 @@ repo_folder = 'Q:\REPOS\';
 if contains(hostname, 'PP0695')
   repo_folder = 'C:\Users\richard.connors\Documents\REPOS\';
 end
-
-repo_flexbus = 'C:\Users\richard.connors\Documents\REPOS\Flexbus3_v0.7\';
-saveData_UrbanMorph = 'C:\Users\richard.connors\Documents\REPOS\UrbanMorph\data\'; % on Kuzuri
-
 repo_flexbus = [repo_folder, 'Flexbus3_v0.7\']; 
 saveData_UrbanMorph = [repo_folder, 'UrbanMorph\data\']; % on Kuzuri
 
@@ -50,13 +46,13 @@ nPassengers = 100; % number passengers to generate
 % minRadius and maxRadius can have single value = used for all stations
 % OR can be a row vector size [1 x nTransitStations]
 Pax_minRadius = 1.5; % min radius away from station for passenger locations
-Pax_maxRadius = 5.0; % max radius around station for passenger locations
+Pax_maxRadius = 10.0; % max radius around station for passenger locations
 paxSeparation = 0.05; % min distance between passengers
 BS_separation = 1; % spacing for grid of potential bus stop locations
 maxWalkingDist = 1.2; % BS_separation*sqrt(2)/2; %
 nCharger  = 4; % how many chargers PER TOWN/TRANSIT STATION.
 charger_radius = 2; % chargers located on circle around each town centre
-demandPeakness = 0; % 0 = uniform. 1 = peaked in middle
+demandPeakness = 1; % 0 = uniform. 1 = peaked in middle
 PLOTFLAG = 0; % plots the network data
 
 
@@ -69,7 +65,7 @@ PLOTFLAG = 0; % plots the network data
 % now subsample the T_passenger and write to yumeng style files.
 % will need to generate different filenames?
 
-nDays = 50; nSample = 10;
+nDays = 30; nSample = 75;
 
 % ====== BUS FLEET
 % we will have too many buses since nBus computed on total population
@@ -88,20 +84,21 @@ busFleet2.SOC = linspace(20,80,nBus)'; % even spacing of bus SOC from 20 -> 80
 this_busFleet = [busFleet1;busFleet2];
 
 
-data_repo = [repo_flexbus, 'data\test\'];
-pSchedule = zeros(nPassengers,nDays);
+data_repo = [repo_flexbus, 'data\P100_75_30\'];
+pSchedule = zeros(nSample,nDays);
+rng('default') % for reproducability
 for i = 1:nDays
-  this_Pax = randperm(nPassengers,nSample);
-  pSchedule(this_Pax,i) = 1;
+  this_Pax = sort(randperm(nPassengers,nSample));
+  pSchedule(:,i) = this_Pax ;
 
   T_thisPax = T_Passenger(this_Pax,:);
   % do I need to re-number passengers to be consecutive?
 
-  saveFolder = [data_repo, sprintf('P%d_%dD%d_%d',nPassengers,nSample,nDays,i)];
+  saveFolder = [data_repo, sprintf('P%d_%dD%d_%03d',nPassengers,nSample,nDays,i)];
   if ~isfolder(saveFolder), mkdir(saveFolder); end
   saveToYumengFormat(saveFolder,this_busFleet, T_thisPax ,T_busStop,T_Charger,T_Station,allStationDeps,T_depot,maxWalkingDist)
 end
-
+save([data_repo,'scenarioWorkspace'])
 
 % runFlexbusAnalysis(data_repo)
 
