@@ -51,8 +51,8 @@ paxSeparation = 0.05; % min distance between passengers
 BS_separation = 1; % spacing for grid of potential bus stop locations
 maxWalkingDist = 1.2; % BS_separation*sqrt(2)/2; %
 nCharger  = 4; % how many chargers PER TOWN/TRANSIT STATION.
-charger_radius = 2; % chargers located on circle around each town centre
-demandPeakness = 1; % 0 = uniform. 1 = peaked in middle
+charger_radius = 3; % chargers located on circle around each town centre
+demandPeakness = 0; % 0 = uniform. 1 = peaked in middle
 PLOTFLAG = 0; % plots the network data
 
 
@@ -65,7 +65,7 @@ PLOTFLAG = 0; % plots the network data
 % now subsample the T_passenger and write to yumeng style files.
 % will need to generate different filenames?
 
-nDays = 30; nSample = 75;
+nDays = 30; nSample = 50;
 
 % ====== BUS FLEET
 % we will have too many buses since nBus computed on total population
@@ -84,7 +84,7 @@ busFleet2.SOC = linspace(20,80,nBus)'; % even spacing of bus SOC from 20 -> 80
 this_busFleet = [busFleet1;busFleet2];
 
 
-data_repo = [repo_flexbus, 'data\P100_75_30\'];
+data_repo = [repo_flexbus, 'data\test\'];
 pSchedule = zeros(nSample,nDays);
 rng('default') % for reproducability
 for i = 1:nDays
