@@ -71,7 +71,7 @@ busFleet = [busFleet1;busFleet2];
 writetable(busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
 
 % ====== START network geometry
-rng default % make randomness repeatable
+rng('shuffle') % make randomness repeatable
 x0 = 0; y0 = 0; % centre (could geolocate this later)
 
 % ====== GENERATE LOCATIONS FOR TRANSIT, CHARGERS, PAX
