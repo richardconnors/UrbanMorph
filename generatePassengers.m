@@ -1,8 +1,10 @@
 function X = generatePassengers(x0, y0, minRadius, maxRadius, nPax, minPaxDist, maxIter)
-% around centre [x0,y0] normally distributed within (rough) extent = radius
-% (radius = 3*std dev of normal)
+% pax_XY = generatePassengers(x0, y0, minRadius, maxRadius, nPax, minPaxDist, maxIter)
+% around centre [x0,y0] uniformly/exponentially distributed within maxRadius
+
 exponentialDecayFlag = 0;
 sectorAngle = 2*pi; % default is whole disc
+
 % check of inputs mostly for testing
 if ~nargin
   x0 = 0; y0 = 0; % length of square sides in m

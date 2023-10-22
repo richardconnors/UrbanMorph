@@ -1,21 +1,26 @@
-rng('default') % for reproducability
+% data structure should be ONE master folder that contains N subfolders
+% each with a different 'run' of some sort
+% This script will iterate through EACH results subfolder, extract data for
+% that 'run' and generate summary statistics.
+
+% The initial intended paradigm is N samples from a population of P travellers.
 
 % sort out folder and file names
-repo_folder = 'Q:\REPOS\';
 [~, hostname] = system('hostname');
-if contains(hostname, 'PP0695'),   repo_folder = 'C:\Users\richard.connors\Documents\REPOS\'; end
+if contains(hostname, 'PP0695')
+  repo_folder = 'C:\Users\richard.connors\Documents\REPOS\';
+else
+  repo_folder = 'Q:\REPOS\';
+end
 repo_flexbus = [repo_folder, 'Flexbus3_v0.7\'];
 saveData_UrbanMorph = [repo_folder, 'UrbanMorph\data\'];
 
-% %=======================
-% thisTEST = 'data\P100_10_150\';
-% thisTEST = 'data\P100_50_30\';
-% thisTEST = 'data\P100_50D30_P\';
-% thisTEST = 'data\test\';
-% %=======================
+% ==================================================
+data_to_load = [repo_flexbus, 'data\test\'];
+% ==================================================
 
-data_repo = [repo_flexbus, 'data\P100_50D30_P\'];
-load([data_repo,'scenarioWorkspace'])
+load([data_to_load,'scenarioWorkspace']) %
+% display brief param descriptions
 fprintf('nPassengers = %d \n', nPassengers);
 fprintf('Pax_maxRadius = %.1f \n', Pax_maxRadius)
 fprintf('Pax_minRadius = %.1f \n', Pax_minRadius)
@@ -23,25 +28,26 @@ fprintf('demandPeakness = %.1f \n', demandPeakness)
 fprintf('nSample = %d \n', nSample)
 fprintf('nDays = %d \n', nDays)
 
-data_repo = [repo_flexbus, 'data\P100_50D30_P\'];
 
 T = T_Passenger;
 dFromO= sqrt(T.passenger_X.^2 + T.passenger_Y.^2);
 T = [T, table(dFromO, 'VariableName', {'DistanceFromStation'})];
-busOccupancyData = [];
+
+busOccupancyData = []; % for histogram of bus occupancy per trip
+allTours = {}; % want to plot a line for each tour
 % get list of all folders we need to iterate through
-items = dir(data_repo); nDay = 1;
+items = dir(data_to_load); nDay = 1;
 for i = 1:numel(items)
   % Check if the item is a directory and not '.' or '..'
   if items(i).isdir && ~ismember(items(i).name, {'.', '..'})
     % load V_DF and cus_experience files from this folder
 
-    thisFolder = [data_repo, items(i).name, filesep];
+    thisFolder = [data_to_load, items(i).name, filesep];
     folderItems = dir(thisFolder);
     allFiles = string({folderItems.name});
 
-    V_DF_file = fullfile(thisFolder, allFiles(find(contains(allFiles,'V_DF'))));
-    cus_file = fullfile(thisFolder, allFiles(find(contains(allFiles,'cus_'))));
+    V_DF_file = fullfile(thisFolder, allFiles(contains(allFiles,'V_DF')));
+    cus_file = fullfile(thisFolder, allFiles(contains(allFiles,'cus_')));
     route_files =  allFiles(startsWith(allFiles,'route_detail_'));
     if ~isempty(V_DF_file) && ~isempty(cus_file)
       vdf = readtable(V_DF_file);  % You can use readmatrix for newer MATLAB versions
@@ -57,8 +63,10 @@ for i = 1:numel(items)
       servedCus = [];
       for ff = 1:length(route_files) % one for each bus?
         this_route = readtable(fullfile(thisFolder,route_files{ff}));  % You can use readmatrix for newer MATLAB versions
-        busOccupancyData = [busOccupancyData; this_route.num_passenger]; %#ok<AGROW>
-        tour = [this_route.x, this_route.y]
+        busOccupancyData = [busOccupancyData; this_route.num_passenger];
+
+        allTours{end+1} = [this_route.x, this_route.y];
+
         C = string(this_route.cus_set); C = C(~startsWith(C,"Int64"));
         pattern = '\d+';
         % Loop through each element of the string array
@@ -66,7 +74,7 @@ for i = 1:numel(items)
           % Find all numerical values in the current string
           matches = regexp(C(i), pattern, 'match');
           % Convert the matched values to a numeric array and append them to the vector
-          servedCus = [servedCus, str2double(matches{1})];
+          servedCus = [servedCus, str2double(matches{1})]; %#ok<*AGROW>
         end
 
         % Display the resulting vector of numerical
@@ -91,6 +99,21 @@ title('Distribution of ride time with distance from station')
 figure;
 histogram(busOccupancyData(busOccupancyData>0))
 title('Bus Occupancy'); ylabel('Number of Trips')
+
+figure; % Plot all tours as patches
+h_bs = scatter(T_busStop.busStop_X,T_busStop.busStop_Y,'+');
+h_bs.MarkerEdgeColor = 0.8*ones(3,1);
+hold on
+h_st = scatter(0,0,'gs'); h_st.MarkerFaceColor = 'g';
+h_pax = scatter(T_Passenger.passenger_X,T_Passenger.passenger_Y,'r.');
+fh = cell(numel(allTours),1);
+for tt = 1:numel(allTours)
+  thisTour = allTours{tt};
+  fh{tt} = fill(thisTour(:,1),thisTour(:,2),0.9*[1,1,1]);
+  fh{tt}.FaceAlpha = 0.2;
+  fh{tt}.FaceColor = 0.6*[1,1,1];
+  fh{tt}.EdgeColor = "none";
+end
 
 return
 
