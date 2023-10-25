@@ -27,8 +27,6 @@ arguments % declare arguments and supply default values
   PLOTFLAG (1,1) logical = 1; % plot data (1) or not (0)?
 end
 
-SAVE_FLAG = 0;
-
 % ====== BUS FLEET
 busType = 1; maxPax = 10; maxKWH = 35.8; % kWh - does this correspond to 100% SOC or maxSOC?
 minSOC = 10; % percent
@@ -69,6 +67,7 @@ station_Y = round(station_XY(:,2),5);
 station_ID = (1:nStation)';
 T_Station = table(station_ID, station_X,station_Y);
 
+% ========================================
 % ======== DEPARTURES FROM EACH STATION ??
 bufferT = 15;
 headway1 = 20;
@@ -118,11 +117,12 @@ charger_Y = round(charger_XY(:,2),5);
 charger_rate = 0.83*ones(nCharger,1); % kW/minute
 T_Charger = table(charger_ID,charger_X,charger_Y,charger_rate);
 
+% ========================================
 % ====== generate passenger locations
-% nPax is split amongst the stations 
+% nPax is split amongst the stations
 % For each station we generate nPax/nStations around that station (min/max
 % radii) AND these pax go to THAT station.
-pax_XY = []; pax_stationID = [];
+pax_XY = []; pax_stationID = []; DistanceFromStation = [];
 maxIter = 1000; % for algorithm ensuring pax min separation
 this_Pax_minRadius = Pax_minRadius(1);
 this_Pax_maxRadius = Pax_maxRadius(1);
@@ -135,20 +135,29 @@ for t = 1:nStation
     this_Pax_maxRadius = Pax_maxRadius(t);
   end
   this_XY = generatePassengers(station_XY(t,1), station_XY(t,2), this_Pax_minRadius, this_Pax_maxRadius, floor(nPax./nStation), paxSeparation, maxIter);
-  this_ID = t*ones(size(this_XY,1),1);
+  this_N = size(this_XY,1);
+  this_ID = t*ones(this_N,1);
   pax_XY = [pax_XY;this_XY];
   pax_stationID = [pax_stationID;this_ID(:)]; %#ok<*AGROW>
+
+  this_DfromO = sqrt((this_XY(:,1) - repmat(station_XY(t,1),this_N,1)).^2 +...
+  (this_XY(:,2) - repmat(station_XY(t,2),this_N,1)).^2);
+  DistanceFromStation = [DistanceFromStation; this_DfromO];
 end
 nPax = size(pax_XY,1);
-% ====== end GENERATE LOCATIONS FOR PAX, TRANSIT, CHARGERS
+% if we want to send passengers to random station locations
+% pax_stationID = randi(nStation,[nPax,1]);
 
+% ====== end GENERATE LOCATIONS FOR PAX, TRANSIT, CHARGERS
+% ========================================
+% ========================================
 % ====== GENERATE DEMAND ASSIGNMENTS
 % generate passenger destinations = transit station and train dep time
 % assume pax go to local transit station
 % assume same demand profile for each station
 
 % demandPeakness: 0 = uniform, 1 = very peaked demand
-pax_depT = [];
+pax_depT = nan(nPax,1);
 for t = 1:nStation
   % distribute demand (pax with this station ID)
   % among departures from THIS station only
@@ -160,23 +169,24 @@ for t = 1:nStation
   % what prob for each departure time?
   pUnif = ones(nDeps,1)*1/nDeps;
   pNorm = normpdf(1:nDeps, mean(1:nDeps),1); pNorm = pNorm./sum(pNorm);
-  pDeps = (1-demandPeakness)*pUnif + demandPeakness*pNorm(:);
-  thisPaxDeps = gendist(pDeps,1,sum(pax_stationID==t));
-  pax_depT = [pax_depT; thisPaxDeps(:)];
-
+  pDeps = (1-demandPeakness)*pUnif + demandPeakness*pNorm(:); % prob of a pax taking each departure
+  pax_i = pax_stationID==t; % pax using this station
+  thisPaxDeps = gendist(pDeps,1,sum(pax_i));
+  pax_depT(pax_i) = thisPaxDeps(:);
 end
+% give the fields nice names for the table
 passenger_ID = (1:nPax)';
 passenger_X = round(pax_XY(:,1),5);
 passenger_Y = round(pax_XY(:,2),5);
 passenger_StationID = pax_stationID;
 passenger_DepartureTime = pax_depT;
 
-T_Passenger = table(passenger_ID, passenger_X, passenger_Y, passenger_StationID, passenger_DepartureTime);
-
+T_Passenger = table(passenger_ID, passenger_X, passenger_Y, passenger_StationID, passenger_DepartureTime, DistanceFromStation);
 
 % ====== end GENERATE DEMAND ASSIGNMENTS
+% ========================================
 
-
+% ========================================
 % ====== GENERATE BUS STOPS
 % Grid of all legally viable bus stop locations
 % BS grid separation needs to match max walking distance
@@ -225,80 +235,75 @@ depot_Y = round(mean(busStop_Y),5);
 T_depot = table(depot_ID,depot_X,depot_Y);
 
 % % ====== SAVE TO TEXT FILES
-if SAVE_FLAG
-  % ====== PARAMETERS
-  params.maxWalkingDist = round(maxWalkingDist,5);
-  params.walkingSpeed = 0.085; % km/minute
-  params.busSpeed = 0.83; % km/minute
-  params.busStopServiceTime = 0.5; % minutes
-  params.maxTransitWaitingTime = 15; % minutes
-  params.nPax = nPax;
-  params.paxSeparation = paxSeparation;
-  params.nStation = nStation;
-  params.nCharger = nCharger;
-  params.chargerRadius = charger_radius;
-  params.demandPeakness = demandPeakness;
-  params = orderfields(params);
+% if SAVE_FLAG
+%   % ====== PARAMETERS
+%   params.maxWalkingDist = round(maxWalkingDist,5);
+%   params.walkingSpeed = 0.085; % km/minute
+%   params.busSpeed = 0.83; % km/minute
+%   params.busStopServiceTime = 0.5; % minutes
+%   params.maxTransitWaitingTime = 15; % minutes
+%   params.nPax = nPax;
+%   params.paxSeparation = paxSeparation;
+%   params.nStation = nStation;
+%   params.nCharger = nCharger;
+%   params.chargerRadius = charger_radius;
+%   params.demandPeakness = demandPeakness;
+%   params = orderfields(params);
+%
+%   % ===== SAVE LOCATION
+%   % [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot]
+%   saveFolder = [saveData_UrbanMorph, sprintf('P%dS%dC%dDP%.1f',nPax,nStation,nCharger,demandPeakness)]; %#ok<*UNRCH>
+%   if ~isfolder(saveFolder), mkdir(saveFolder); end
+%
+%   writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
+%   writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
+%   writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
+%   writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
+%   writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
+%   writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
+%   writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
+%   writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
+% end
+% % ====== end SAVE TO TEXT FILES
+% ========================================
 
-  % ===== SAVE LOCATION
-  % [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot]
-  saveFolder = [saveData_UrbanMorph, sprintf('P%dS%dC%dDP%.1f',nPax,nStation,nCharger,demandPeakness)]; %#ok<*UNRCH>
-  if ~isfolder(saveFolder), mkdir(saveFolder); end
 
-  writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
-  writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
-  writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
-  writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
-  writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
-  writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
-  writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
-  writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
-end
-% ====== end SAVE TO TEXT FILES
-
-% ======= PLOTTING DATA IF DESIRED =====================
-
-fh = figure;  % Create a visible figure
+% ========================================
+% ======= PLOTTING DATA IF DESIRED =======
 %   figure; hh = histogram(pax_depT);
 %   hh.BinEdges = 0.5:nDeps+1.5;
 %   title(sprintf('Departure Time Distribution [%.1f]', demandPeakness))
 
-% bus stop grid not being considered
-%   scatter(BS_XY(~BSinCH,1),BS_XY(~BSinCH,2),25,0.9*[1,1,1],'+');
+fh = figure;  % Create a visible figure
 hold on
 % bus stops being considered
 scatter(BS_XY(BSinCH,1),BS_XY(BSinCH,2),25,0.1*[1,1,1],'+');
-% paseenger locations with number of departure labelled
-scatter(pax_XY(:,1),pax_XY(:,2),200,'r.');
-
-% plot departure number if not too many pax
-if nPax < 100
-  dx = 0; dy = .02; % displacement so the text does not overlay the data points
-  text(pax_XY(:,1)+dx,pax_XY(:,2)+dy, cellstr(num2str(pax_depT(:))));
-end
+legendCell = {sprintf('Meeting Points [%d]',nBS)};
 
 % transit stations display each one a different colour
-for i = 1:nStations
-  scatter(station_XY(:,1),station_XY(:,2),150,'filled','square','blue');
+cmap = colormap_generator(nStation);
+for i = 1:nStation
+  sh = scatter(station_XY(i,1),station_XY(i,2),150,'filled','square','blue');
+  sh.MarkerEdgeColor = cmap(i,:);
+  sh.MarkerFaceColor = cmap(i,:);
+  pax_ind = T_Passenger.passenger_StationID == i;
+  ph = scatter(pax_XY(pax_ind,1),pax_XY(pax_ind,2),200,'.');
+  ph.MarkerEdgeColor = cmap(i,:);
+  ph.MarkerFaceColor = cmap(i,:);
+  legendCell = [legendCell, {'Station',sprintf('Customers [%d]',sum(pax_ind))}];
 end
-
 
 % charger locations
 scatter(charger_XY(:,1),charger_XY(:,2),80,'filled','^','green');
-axis equal
+legendCell = [legendCell, {sprintf('Chargers [%d]',nCharger)}];
 
-% legend({sprintf('Potential Meeting Points [%d]',size(BS_XY,1)-nBS),...
-%   sprintf('Active Meeting Point [%d]',nBS), sprintf('Pax [%d]',nPax),'Depot',...
-%   sprintf('Charger [%d]',nCharger)});
-
-legend({sprintf('Meeting Points [%d]',nBS), sprintf('Customers [%d]',nPax),'Depot',...
-  sprintf('Chargers [%d]',nCharger)});
+axis equal; legend(legendCell)
 xlabel('X coordinate (km)'); ylabel('Y coordinate (km)')
 
 if any(paxMissed)
   disp('These customers cant reach any meeting point:');
   disp(pax_XY(paxMissed,:))
-  scatter(pax_XY(paxMissed,1),pax_XY(paxMissed,2),200,'m*');
+  scatter(pax_XY(paxMissed,1),pax_XY(paxMissed,2),200,'k*');
 end
 
 % TITLE that notes various settings

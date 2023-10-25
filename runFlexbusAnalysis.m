@@ -1,92 +1,84 @@
-% data structure should be ONE master folder that contains N subfolders
+% data should be in ONE master folder that contains N subfolders
 % each with a different 'run' of some sort
 % This script will iterate through EACH results subfolder, extract data for
 % that 'run' and generate summary statistics.
 
-% The initial intended paradigm is N samples from a population of P travellers.
-
 % sort out folder and file names
-[~, hostname] = system('hostname');
-if contains(hostname, 'PP0695')
-  repo_folder = 'C:\Users\richard.connors\Documents\REPOS\';
-else
-  repo_folder = 'Q:\REPOS\';
-end
-repo_flexbus = [repo_folder, 'Flexbus3_v0.7\'];
-saveData_UrbanMorph = [repo_folder, 'UrbanMorph\data\'];
-
-% ==================================================
-data_to_load = [repo_flexbus, 'data\test\'];
-% ==================================================
-
-load([data_to_load,'scenarioWorkspace']) %
-% display brief param descriptions
-fprintf('nPassengers = %d \n', nPassengers);
-fprintf('Pax_maxRadius = %.1f \n', Pax_maxRadius)
-fprintf('Pax_minRadius = %.1f \n', Pax_minRadius)
-fprintf('demandPeakness = %.1f \n', demandPeakness)
-fprintf('nSample = %d \n', nSample)
-fprintf('nDays = %d \n', nDays)
+repo_flexbus = [get_repo_folder, 'Flexbus3_v0.7\'];
+data_to_load = [repo_flexbus, 'data\results\BS_separation\'];
 
 
-T = T_Passenger;
-dFromO= sqrt(T.passenger_X.^2 + T.passenger_Y.^2);
-T = [T, table(dFromO, 'VariableName', {'DistanceFromStation'})];
-
-busOccupancyData = []; % for histogram of bus occupancy per trip
-allTours = {}; % want to plot a line for each tour
-% get list of all folders we need to iterate through
-items = dir(data_to_load); nDay = 1;
+items = dir(data_to_load);
+items = items([items.isdir]);
+indexToKeep = ~ismember({items.name}, {'.', '..'});
+items = items(indexToKeep);
 for i = 1:numel(items)
-  % Check if the item is a directory and not '.' or '..'
-  if items(i).isdir && ~ismember(items(i).name, {'.', '..'})
-    % load V_DF and cus_experience files from this folder
+  thisFolder = [data_to_load, items(i).name, filesep];
+  matFiles = dir([thisFolder,'*.mat']);
+  load([thisFolder ,matFiles(1).name]) % should be the workspace
+  disp('=================================')
+  disp(['Loading ' matFiles(1).name])
 
-    thisFolder = [data_to_load, items(i).name, filesep];
-    folderItems = dir(thisFolder);
-    allFiles = string({folderItems.name});
+  rFiles = dir([thisFolder,'route_detail*.csv']);
+  cFile = dir([thisFolder,'cus_experience*.csv']);
+  vdfFile = dir([thisFolder,'V_DF.csv']);
 
-    V_DF_file = fullfile(thisFolder, allFiles(contains(allFiles,'V_DF')));
-    cus_file = fullfile(thisFolder, allFiles(contains(allFiles,'cus_')));
-    route_files =  allFiles(startsWith(allFiles,'route_detail_'));
-    if ~isempty(V_DF_file) && ~isempty(cus_file)
-      vdf = readtable(V_DF_file);  % You can use readmatrix for newer MATLAB versions
-      this_pax = vdf(strcmp(vdf.v_type,'customer'),:); % has columns of x and y data
-      cus_data = readtable(cus_file);  % You can use readmatrix for newer MATLAB versions
-      allCus = cus_data.cus;
-      originalPaxID = pSchedule(:,i-2); % i = 1,2 are '.' and '..' then count through file
-      this_data = nan(size(T,1),1);
-      this_rideTime = cus_data.ride_time; this_rideTime(~this_rideTime) = NaN;
-      this_data(originalPaxID) = this_rideTime;
-      T = [T, table(this_data, 'VariableName', {items(i).name})]; %#ok<AGROW>
+  T = T_Passenger;
+  busOccupancyData = []; % for histogram of bus occupancy per trip
+  allTours = {}; % want to plot a line for each tour
 
-      servedCus = [];
-      for ff = 1:length(route_files) % one for each bus?
-        this_route = readtable(fullfile(thisFolder,route_files{ff}));  % You can use readmatrix for newer MATLAB versions
-        busOccupancyData = [busOccupancyData; this_route.num_passenger];
+  if ~isempty(vdfFile) && ~isempty(cFile) && numel(rFiles)>0
+    % display brief param descriptions
+    fprintf('nPassengers = %d \n', nPassengers);
+    fprintf('Pax_maxRadius = %.1f \n', Pax_maxRadius)
+    fprintf('Pax_minRadius = %.1f \n', Pax_minRadius)
+    fprintf('demandPeakness = %.1f \n', demandPeakness)
 
-        allTours{end+1} = [this_route.x, this_route.y];
-
-        C = string(this_route.cus_set); C = C(~startsWith(C,"Int64"));
-        pattern = '\d+';
-        % Loop through each element of the string array
-        for i = 1:numel(C)
-          % Find all numerical values in the current string
-          matches = regexp(C(i), pattern, 'match');
-          % Convert the matched values to a numeric array and append them to the vector
-          servedCus = [servedCus, str2double(matches{1})]; %#ok<*AGROW>
-        end
-
-        % Display the resulting vector of numerical
-      end
-      nDay = nDay + 1;
-    else
-      disp([items(i).name,' no VDF and cus file']);
+    vdf = readtable([thisFolder, vdfFile.name]);
+    this_pax = vdf(strcmp(vdf.v_type,'customer'),:); % has columns of x and y data
+    % we assume that this_pax are T_passengers in order.
+    % lets double check
+    tolerance = 0.001;
+    XareEqual = all(abs(this_pax.x - T_Passenger.passenger_X) < tolerance);
+    YareEqual = all(abs(this_pax.y - T_Passenger.passenger_Y) < tolerance);
+    if ~XareEqual || ~YareEqual
+      disp('Customers in V_DF do not match T_Passenger')
     end
+    pax_vdfID = this_pax.id; % correspond to original customer numbers 1:N
+
+    cus_data = readtable([thisFolder, cFile.name]);  % You can use readmatrix for newer MATLAB versions
+    rideTime = cus_data.ride_time;
+    walkTime = cus_data.cus_walking_time;
+    rejectedCusInd = ~rideTime;
+    rideTime(rejectedCusInd) = NaN; % customer was rejected
+    walkTime(rejectedCusInd) = NaN;
+    totalDistance = 0; totalPaxTime = 0;
+    totalDriveTime = 0; % will include charging, waiting etc
+    for ff = 1:numel(rFiles) % one for each bus?
+      this_route = readtable(fullfile(thisFolder,rFiles(ff).name));  % You can use readmatrix for newer MATLAB versions
+
+      % total distance travelled
+      route_xy = [this_route.x,this_route.y];
+      diffs = diff(route_xy, 1, 1);
+      distances = sqrt(sum(diffs.^2, 2)); % between consecutive points
+      % Sum all the distances to get the total distance traveled
+      totalDistance = totalDistance + sum(distances);
+      totalDriveTime = totalDriveTime + this_route.t_arr(end);
+
+      % ride time for each customer
+      % so inherently includes multiplying travel time by occupancy
+      totalPaxTime = totalPaxTime + sum(this_route.ride_time);
+
+      allTours{end+1} = [this_route.x, this_route.y]; %#ok<*SAGROW>
+
+    end
+  else
+    disp(['No solutions in ', items(i).name])
   end
-end
-% fprintf('nPassengers = %d \n', nPassengers);
-fprintf('num days failed = %d \n', nDays - nDay+1);
+end %loop through all instance folders
+
+
+return
 
 % what do we want to analyse?
 [~,ind] = sort(T.DistanceFromStation);
@@ -96,11 +88,13 @@ yyaxis right
 h = scatter(1:100,T{ind,6}); ylabel('Distance to station')
 title('Distribution of ride time with distance from station')
 
+% occupancy of bus on each legs
 figure;
 histogram(busOccupancyData(busOccupancyData>0))
 title('Bus Occupancy'); ylabel('Number of Trips')
 
-figure; % Plot all tours as patches
+% Plot all tours as patches on same figure
+figure; 
 h_bs = scatter(T_busStop.busStop_X,T_busStop.busStop_Y,'+');
 h_bs.MarkerEdgeColor = 0.8*ones(3,1);
 hold on
@@ -115,8 +109,7 @@ for tt = 1:numel(allTours)
   fh{tt}.EdgeColor = "none";
 end
 
-return
-
+% scatter plot of bus stops, passenger locations, etc
 figure;
 h_bs = scatter(T_busStop.busStop_X,T_busStop.busStop_Y,'+');
 h_bs.MarkerEdgeColor = 0.8*ones(3,1);
