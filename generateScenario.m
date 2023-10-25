@@ -1,4 +1,4 @@
-function [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] =...
+function [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot,fh] =...
   generateScenario(saveData_UrbanMorph,nStation, Station_separation, nPax,...
   Pax_minRadius, Pax_maxRadius, paxSeparation, maxWalkingDist, BS_separation,...
   nCharger, charger_radius, demandPeakness, PLOTFLAG)
@@ -119,7 +119,9 @@ charger_rate = 0.83*ones(nCharger,1); % kW/minute
 T_Charger = table(charger_ID,charger_X,charger_Y,charger_rate);
 
 % ====== generate passenger locations
-% Create a set of points.
+% nPax is split amongst the stations 
+% For each station we generate nPax/nStations around that station (min/max
+% radii) AND these pax go to THAT station.
 pax_XY = []; pax_stationID = [];
 maxIter = 1000; % for algorithm ensuring pax min separation
 this_Pax_minRadius = Pax_minRadius(1);
@@ -148,10 +150,14 @@ nPax = size(pax_XY,1);
 % demandPeakness: 0 = uniform, 1 = very peaked demand
 pax_depT = [];
 for t = 1:nStation
+  % distribute demand (pax with this station ID)
+  % among departures from THIS station only
+  % according to demand peakedness
   thisDeps = allStationDeps{allStationDeps.StationID==t,'li'};
   nDeps = length(thisDeps);
 
-  % what prob for each departure to get desired demand profile?
+  % to get desired demand profile
+  % what prob for each departure time?
   pUnif = ones(nDeps,1)*1/nDeps;
   pNorm = normpdf(1:nDeps, mean(1:nDeps),1); pNorm = pNorm./sum(pNorm);
   pDeps = (1-demandPeakness)*pUnif + demandPeakness*pNorm(:);
@@ -251,55 +257,60 @@ end
 % ====== end SAVE TO TEXT FILES
 
 % ======= PLOTTING DATA IF DESIRED =====================
-if PLOTFLAG
-  %   figure; hh = histogram(pax_depT);
-  %   hh.BinEdges = 0.5:nDeps+1.5;
-  %   title(sprintf('Departure Time Distribution [%.1f]', demandPeakness))
 
-  figure; clf;
-  % bus stop grid not being considered
-  %   scatter(BS_XY(~BSinCH,1),BS_XY(~BSinCH,2),25,0.9*[1,1,1],'+');
-  hold on
-  % bus stops being considered
-  scatter(BS_XY(BSinCH,1),BS_XY(BSinCH,2),25,0.1*[1,1,1],'+');
-  % paseenger locations with number of departure labelled
-  scatter(pax_XY(:,1),pax_XY(:,2),200,'r.');
+fh = figure;  % Create a visible figure
+%   figure; hh = histogram(pax_depT);
+%   hh.BinEdges = 0.5:nDeps+1.5;
+%   title(sprintf('Departure Time Distribution [%.1f]', demandPeakness))
 
-  % plot departure number if not too many pax
-  if nPax < 100
-    dx = 0; dy = .02; % displacement so the text does not overlay the data points
-    text(pax_XY(:,1)+dx,pax_XY(:,2)+dy, cellstr(num2str(pax_depT(:))));
-  end
-  % transit stations
+% bus stop grid not being considered
+%   scatter(BS_XY(~BSinCH,1),BS_XY(~BSinCH,2),25,0.9*[1,1,1],'+');
+hold on
+% bus stops being considered
+scatter(BS_XY(BSinCH,1),BS_XY(BSinCH,2),25,0.1*[1,1,1],'+');
+% paseenger locations with number of departure labelled
+scatter(pax_XY(:,1),pax_XY(:,2),200,'r.');
+
+% plot departure number if not too many pax
+if nPax < 100
+  dx = 0; dy = .02; % displacement so the text does not overlay the data points
+  text(pax_XY(:,1)+dx,pax_XY(:,2)+dy, cellstr(num2str(pax_depT(:))));
+end
+
+% transit stations display each one a different colour
+for i = 1:nStations
   scatter(station_XY(:,1),station_XY(:,2),150,'filled','square','blue');
-  % charger locations
-  scatter(charger_XY(:,1),charger_XY(:,2),80,'filled','^','green');
-  axis equal
+end
 
-  % legend({sprintf('Potential Meeting Points [%d]',size(BS_XY,1)-nBS),...
-  %   sprintf('Active Meeting Point [%d]',nBS), sprintf('Pax [%d]',nPax),'Depot',...
-  %   sprintf('Charger [%d]',nCharger)});
 
-  legend({sprintf('Meeting Points [%d]',nBS), sprintf('Customers [%d]',nPax),'Depot',...
-    sprintf('Chargers [%d]',nCharger)});
-  xlabel('X coordinate (km)'); ylabel('Y coordinate (km)')
+% charger locations
+scatter(charger_XY(:,1),charger_XY(:,2),80,'filled','^','green');
+axis equal
 
-  if any(paxMissed)
-    disp('These customers cant reach any meeting point:');
-    disp(pax_XY(paxMissed,:))
-    scatter(pax_XY(paxMissed,1),pax_XY(paxMissed,2),200,'m*');
-  end
+% legend({sprintf('Potential Meeting Points [%d]',size(BS_XY,1)-nBS),...
+%   sprintf('Active Meeting Point [%d]',nBS), sprintf('Pax [%d]',nPax),'Depot',...
+%   sprintf('Charger [%d]',nCharger)});
 
-  % TITLE that notes various settings
-  % if nStation>1
-  %   title(sprintf('Station Gap = %.2f. Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
-  %     Station_separation,BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
-  % else
-  %   title(sprintf('Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
-  %     BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
-  % end
+legend({sprintf('Meeting Points [%d]',nBS), sprintf('Customers [%d]',nPax),'Depot',...
+  sprintf('Chargers [%d]',nCharger)});
+xlabel('X coordinate (km)'); ylabel('Y coordinate (km)')
 
-  % draw circles around each passenger location of max walking distance
-  % h_circles = viscircles(pax_XY, maxWalkingDist*ones(size(pax_XY,1),1), 'color', [1 0.9 0.9]);
+if any(paxMissed)
+  disp('These customers cant reach any meeting point:');
+  disp(pax_XY(paxMissed,:))
+  scatter(pax_XY(paxMissed,1),pax_XY(paxMissed,2),200,'m*');
+end
+
+% TITLE that notes various settings
+% if nStation>1
+%   title(sprintf('Station Gap = %.2f. Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
+%     Station_separation,BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
+% else
+%   title(sprintf('Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
+%     BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
+% end
+
+% draw circles around each passenger location of max walking distance
+% h_circles = viscircles(pax_XY, maxWalkingDist*ones(size(pax_XY,1),1), 'color', [1 0.9 0.9]);
 
 end
