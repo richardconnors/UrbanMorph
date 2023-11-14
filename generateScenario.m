@@ -18,25 +18,26 @@ demandPeakness = params.demandPeakness;
 % set the centre at [0,0]
 
 % ====== BUS FLEET
-busType = 1; maxPax = 10; maxKWH = 35.8; % kWh - does this correspond to 100% SOC or maxSOC?
+busType = 1; maxPax = 20; maxKWH = 35.8; % kWh - does this correspond to 100% SOC or maxSOC?
 minSOC = 10; % percent
 maxSOC = 80; % percent
 SOC = 20; consumption = 0.24; %kW.km
-nBus = ceil(0.5*nPax*0.7/maxPax);
+nBus = ceil(2*nPax/maxPax);
 busFleet1 = table(busType, maxPax, maxKWH, minSOC, maxSOC, SOC, consumption);
 busFleet1 = repmat(busFleet1,nBus,1);
 % distribute SOC amongst buses
 busFleet1.SOC = linspace(20,80,nBus)'; % even spacing of bus SOC from 20 -> 80
-
-busType = 2; maxPax = 20; maxKWH = 53.7; % kWh - does this correspond to 100% SOC or maxSOC?
-minSoC = 10; % percent
-maxSoC = 80; % percent
-SoC = 20; consumption = 0.29; %kW.km
-nBus = ceil(0.5*nPax*0.7/maxPax);
-busFleet2 = table(busType,maxPax,maxKWH,minSOC,maxSOC,SOC,consumption);
-busFleet2 = repmat(busFleet2,nBus,1);
-busFleet2.SOC = linspace(20,80,nBus)'; % even spacing of bus SOC from 20 -> 80
-T_busFleet = [busFleet1;busFleet2];
+T_busFleet = busFleet1;
+  
+% busType = 2; maxPax = 20; maxKWH = 53.7; % kWh - does this correspond to 100% SOC or maxSOC?
+% minSoC = 10; % percent
+% maxSoC = 80; % percent
+% SoC = 20; consumption = 0.29; %kW.km
+% nBus = ceil(0.5*nPax*0.7/maxPax);
+% busFleet2 = table(busType,maxPax,maxKWH,minSOC,maxSOC,SOC,consumption);
+% busFleet2 = repmat(busFleet2,nBus,1);
+% busFleet2.SOC = linspace(20,80,nBus)'; % even spacing of bus SOC from 20 -> 80
+% T_busFleet = [busFleet1;busFleet2];
 
 % ====== START network geometry
 rng default % make randomness repeatable

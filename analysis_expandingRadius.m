@@ -5,7 +5,7 @@
 
 % sort out folder and file names
 repo_flexbus = [get_repo_folder, 'Flexbus3_v0.8.4\'];
-data_to_load = [repo_flexbus, 'results\urbanMorph_results\expandRadius_P50\'];
+data_to_load = [repo_flexbus, 'results\urbanMorph_results\expanding_const_density\'];
 
 % get list of all folders we need to iterate through
 items = dir(data_to_load);
@@ -71,7 +71,7 @@ end
 
 nPax = p.nPax;
 nServed = sum(paxOK);
-totalDirectDistance = sum(T_Passenger.DistanceFromStation(paxOK))
+totalDirectDistance = sum(T_Passenger.DistanceFromStation(paxOK));
 
 
 

@@ -1,0 +1,3 @@
+busType,maxPax,maxKWH,minSOC,maxSOC,SOC,consumption
+1,10,35.8,10,80,20,0.24
+1,10,35.8,10,80,80,0.24

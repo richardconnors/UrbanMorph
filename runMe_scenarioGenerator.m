@@ -35,41 +35,26 @@ repo_urbanMorph = [get_repo_folder, 'UrbanMorph\'];
 % saveData_UrbanMorph = [repo_flexbus, 'data\urbanMorph_toRun\'];
 saveData_UrbanMorph = [repo_urbanMorph, 'data\'];
 
-nStations = 1;
-Station_separation = 3; % distance between multiple stations
-nPassengers = 100; % number passengers to generate
-% Passengers will be generated uniformly distributed in an annulus around each station
-% minRadius and maxRadius can have single value = used for all stations
-% OR can be a row vector size [1 x nTransitStations]
-Pax_minRadius = 1.5; % min radius away from station for passenger locations
-Pax_maxRadius = 5.0; % max radius around station for passenger locations
-paxSeparation = 0.05; % min distance between passengers
-BS_separation = 1.4; % spacing for grid of potential bus stop locations
-maxWalkingDist = 1.0; % BS_separation*sqrt(2)/2; %
-nCharger  = 2; % how many chargers PER TOWN/TRANSIT STATION.
-charger_radius = 3; % chargers located on circle around each town centre
-demandPeakness = 2; % 0 = uniform. 1 = peaked in middle
-
 % ====== PARAMETERS for saving
-p.maxWalkingDist = round(maxWalkingDist,5);
+p.maxWalkingDist = 1.0; % BS_separation*sqrt(2)/2; %
 p.walkingSpeed = 0.085; % km/minute
 p.busSpeed = 0.83; % km/minute
 p.busStopServiceTime = 0.5; % minutes
 p.maxTransitWaitingTime = 15; % minutes
-p.nPax = nPassengers;
-p.Pax_minRadius = Pax_minRadius;
-p.Pax_maxRadius = Pax_maxRadius;
-p.paxSeparation = paxSeparation;
-p.BS_separation = BS_separation;
-p.nStation = nStations;
-p.nCharger = nCharger;
-p.chargerRadius = charger_radius;
-p.demandPeakness = demandPeakness;
-p.stationSeparation = Station_separation;
+p.nPax = 100;
+p.Pax_minRadius = 1.5;
+p.Pax_maxRadius = 5.0;
+p.paxSeparation = 0.05;
+p.BS_separation = 1.4;
+p.nStation = 1;
+p.nCharger = 4; % how many chargers PER TOWN/TRANSIT STATION
+p.chargerRadius = 3;
+p.demandPeakness = 2;
+p.stationSeparation = 3;
 p = orderfields(p);
 
 PLOTFLAG = 1; % plots the network data
-SCENARIO = 'expanding_radius_fixedDensity'; % 'sample_from_population'  'expanding_radius' 'mp_density' 'two_cities'
+SCENARIO = 'mp_density'; % 'sample_from_population'  'expanding_radius' 'mp_density' 'two_cities'
 SAVE_TO_YUMENG = 0;
 SAVE_TO_URBANMORPH = 1;
 switch SCENARIO
@@ -149,6 +134,7 @@ switch SCENARIO
     %===========================================================================
     rng('default') % for reproducability
     N = 10; cityDiameter = linspace(2,30,N);
+    p.nPax = 100;
     for i = 1:N
       p.Pax_maxRadius = cityDiameter(i); % max radius around station for passenger locations
       % here generate the total scenario with all passengers
@@ -165,7 +151,7 @@ switch SCENARIO
     %===========================================================================
     rng('default') % for reproducability
     N = 10; cityDiameter = linspace(5,30,N);
-    baseArea = pi*(10.^2) - pi*(p.Pax_minRadius.^2); ppkm2 = 50/baseArea;
+    baseArea = pi*(10.^2) - pi*(p.Pax_minRadius.^2); ppkm2 = 25/baseArea;
     for i = 1:N
       p.Pax_maxRadius = cityDiameter(i); % max radius around station for passenger locations
       area = pi*(p.Pax_maxRadius.^2) - pi*(p.Pax_minRadius.^2);
@@ -200,16 +186,16 @@ switch SCENARIO
     % create a sequence of cities and run each one
     %===========================================================================
     rng('default') % for reproducability
-    maxBS = sqrt(2)*maxWalkingDist;
-    N = 10; bs_distance= linspace(0.1,maxBS,N);
+        N = 5; bs_distance= linspace(0.2,3,N);
     for i = 1:N
-      p.nPax = 50; % number passengers to generate
+      p.nPax = 100; % number passengers to generate
       p.Pax_minRadius = 1.5; % min radius away from station for passenger locations
-      p.Pax_maxRadius = 10; % max radius around station for passenger locations
+      p.Pax_maxRadius = 7.5; % max radius around station for passenger locations
       p.BS_separation = bs_distance(i);
+      p.maxWalkingDist = 1.05*bs_distance(i)*sqrt(2)/2;
       % here generate the total scenario with all passengers
       [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
-
+      height(T_busStop)
       this_instance_folder = scenarioName(p);
       saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
       scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
