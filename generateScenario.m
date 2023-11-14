@@ -1,31 +1,21 @@
-function [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot,fh] =...
-  generateScenario(saveData_UrbanMorph,nStation, Station_separation, nPax,...
-  Pax_minRadius, Pax_maxRadius, paxSeparation, maxWalkingDist, BS_separation,...
-  nCharger, charger_radius, demandPeakness, PLOTFLAG)
+function [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(params)
 
-% [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] =...
-%  generateScenario(saveData_UrbanMorph,nStation, Station_separation, nPax,...
-%  Pax_minRadius, Pax_maxRadius, paxSeparation, maxWalkingDist, BS_separation,...
-%  nCharger, charger_radius, demandPeakness, PLOTFLAG)
+nStation = params.nStation;
+Station_separation = params.stationSeparation;
+nPax = params.nPax;
+Pax_minRadius = params.Pax_minRadius;
+Pax_maxRadius = params.Pax_maxRadius;
+paxSeparation = params.paxSeparation;
+maxWalkingDist = params.maxWalkingDist;
+BS_separation = params.BS_separation;
+nCharger = params.nCharger;
+charger_radius = params.chargerRadius;
+demandPeakness = params.demandPeakness;
+
+% [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] =  generateScenario(params)
 % Generate scenarios for MEVRST algorithms to tackle
 % area of interest will be a rectangle its size will be derived from the location of data points below
 % set the centre at [0,0]
-
-arguments % declare arguments and supply default values
-  saveData_UrbanMorph string = '';
-  nStation (1,1) double = 3;
-  Station_separation (1,1) double = 3; % distance between multiple centres
-  nPax (1,1) double = 50;
-  Pax_minRadius (1,:) double = 0.6; % min radius around town centre for passenger locations
-  Pax_maxRadius (1,:) double = 2; % max radius around town centre for passenger locations
-  paxSeparation (1,1) double = 50; % min distance between passengers
-  maxWalkingDist (1,1) double = 1.5; %
-  BS_separation (1,1) double = .25; % spacing for grid of potential bus stop locations
-  nCharger (1,1) double = 4; % how many chargers PER TOWN.
-  charger_radius (1,1) double = 1; % radius of circle around each town centre
-  demandPeakness  (1,1) double = 0; % 0 = uniform. 1 = peaked in middle
-  PLOTFLAG (1,1) logical = 1; % plot data (1) or not (0)?
-end
 
 % ====== BUS FLEET
 busType = 1; maxPax = 10; maxKWH = 35.8; % kWh - does this correspond to 100% SOC or maxSOC?
@@ -114,6 +104,7 @@ nCharger = size(charger_XY,1);
 charger_ID = (1:nCharger)';
 charger_X = round(charger_XY(:,1),5); % dont need more than 5 decimal places!
 charger_Y = round(charger_XY(:,2),5);
+% chargerX = [0;2];chargerY = [0;0];
 charger_rate = 0.83*ones(nCharger,1); % kW/minute
 T_Charger = table(charger_ID,charger_X,charger_Y,charger_rate);
 
@@ -141,7 +132,7 @@ for t = 1:nStation
   pax_stationID = [pax_stationID;this_ID(:)]; %#ok<*AGROW>
 
   this_DfromO = sqrt((this_XY(:,1) - repmat(station_XY(t,1),this_N,1)).^2 +...
-  (this_XY(:,2) - repmat(station_XY(t,2),this_N,1)).^2);
+    (this_XY(:,2) - repmat(station_XY(t,2),this_N,1)).^2);
   DistanceFromStation = [DistanceFromStation; this_DfromO];
 end
 nPax = size(pax_XY,1);
@@ -149,6 +140,10 @@ nPax = size(pax_XY,1);
 % pax_stationID = randi(nStation,[nPax,1]);
 
 % ====== end GENERATE LOCATIONS FOR PAX, TRANSIT, CHARGERS
+
+
+
+
 % ========================================
 % ========================================
 % ====== GENERATE DEMAND ASSIGNMENTS
@@ -156,7 +151,7 @@ nPax = size(pax_XY,1);
 % assume pax go to local transit station
 % assume same demand profile for each station
 
-% demandPeakness: 0 = uniform, 1 = very peaked demand
+% demandPeakness: 0 = uniform, 1 = peaked demand  2 = all on single dep
 pax_depT = nan(nPax,1);
 for t = 1:nStation
   % distribute demand (pax with this station ID)
@@ -164,13 +159,16 @@ for t = 1:nStation
   % according to demand peakedness
   thisDeps = allStationDeps{allStationDeps.StationID==t,'li'};
   nDeps = length(thisDeps);
-
-  % to get desired demand profile
-  % what prob for each departure time?
-  pUnif = ones(nDeps,1)*1/nDeps;
-  pNorm = normpdf(1:nDeps, mean(1:nDeps),1); pNorm = pNorm./sum(pNorm);
-  pDeps = (1-demandPeakness)*pUnif + demandPeakness*pNorm(:); % prob of a pax taking each departure
   pax_i = pax_stationID==t; % pax using this station
+  if demandPeakness >=0 && demandPeakness<= 1
+    % to get desired demand profile
+    % what prob for each departure time?
+    pUnif = ones(nDeps,1)*1/nDeps;
+    pNorm = normpdf(1:nDeps, mean(1:nDeps),1); pNorm = pNorm./sum(pNorm);
+    pDeps = (1-demandPeakness)*pUnif + demandPeakness*pNorm(:); % prob of a pax taking each departure
+  else
+    pDeps = zeros(nDeps,1); pDeps(end) = 1;
+  end
   thisPaxDeps = gendist(pDeps,1,sum(pax_i));
   pax_depT(pax_i) = thisPaxDeps(:);
 end
@@ -213,109 +211,24 @@ paxMissed = dist>maxWalkingDist;
 % for each bus stop search amongst ALL pax locations to find nearest pax
 % index those BS with nearest pax within maxWalkingDist
 [~,dist] = dsearchn(pax_XY,BS_XY);
-BSinCH = dist<=maxWalkingDist;
+BSinReach = dist<=maxWalkingDist;
 % check that every BS that was the closest to a person is still included
-if ~all(BSinCH(nearestBS))
+if ~all(BSinReach(nearestBS))
   disp('Closest BS has been removed'); keyboard
 end
 
-% find bus stops inside convex hull of pax locations (with 100m tolerance)
-% BSinCH = inhull(BS_XY,pax_XY,[],100);
-nBS = sum(BSinCH);
-
+nBS = sum(BSinReach);
 busStop_ID = (1:nBS)';
-busStop_X = round(BS_XY(BSinCH,1),5);
-busStop_Y = round(BS_XY(BSinCH,2),5);
+busStop_X = round(BS_XY(BSinReach,1),5);
+busStop_Y = round(BS_XY(BSinReach,2),5);
 T_busStop = table(busStop_ID,busStop_X,busStop_Y);
 % ====== end GENERATE BUS STOPS
 
 depot_ID = 1;
 depot_X = round(mean(busStop_X),5);
 depot_Y = round(mean(busStop_Y),5);
+% for Arlon
+% depot_X = 0; depot_Y = -1;
 T_depot = table(depot_ID,depot_X,depot_Y);
-
-% % ====== SAVE TO TEXT FILES
-% if SAVE_FLAG
-%   % ====== PARAMETERS
-%   params.maxWalkingDist = round(maxWalkingDist,5);
-%   params.walkingSpeed = 0.085; % km/minute
-%   params.busSpeed = 0.83; % km/minute
-%   params.busStopServiceTime = 0.5; % minutes
-%   params.maxTransitWaitingTime = 15; % minutes
-%   params.nPax = nPax;
-%   params.paxSeparation = paxSeparation;
-%   params.nStation = nStation;
-%   params.nCharger = nCharger;
-%   params.chargerRadius = charger_radius;
-%   params.demandPeakness = demandPeakness;
-%   params = orderfields(params);
-%
-%   % ===== SAVE LOCATION
-%   % [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot]
-%   saveFolder = [saveData_UrbanMorph, sprintf('P%dS%dC%dDP%.1f',nPax,nStation,nCharger,demandPeakness)]; %#ok<*UNRCH>
-%   if ~isfolder(saveFolder), mkdir(saveFolder); end
-%
-%   writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
-%   writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
-%   writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
-%   writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
-%   writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
-%   writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
-%   writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
-%   writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
-% end
-% % ====== end SAVE TO TEXT FILES
-% ========================================
-
-
-% ========================================
-% ======= PLOTTING DATA IF DESIRED =======
-%   figure; hh = histogram(pax_depT);
-%   hh.BinEdges = 0.5:nDeps+1.5;
-%   title(sprintf('Departure Time Distribution [%.1f]', demandPeakness))
-
-fh = figure;  % Create a visible figure
-hold on
-% bus stops being considered
-scatter(BS_XY(BSinCH,1),BS_XY(BSinCH,2),25,0.1*[1,1,1],'+');
-legendCell = {sprintf('Meeting Points [%d]',nBS)};
-
-% transit stations display each one a different colour
-cmap = colormap_generator(nStation);
-for i = 1:nStation
-  sh = scatter(station_XY(i,1),station_XY(i,2),150,'filled','square','blue');
-  sh.MarkerEdgeColor = cmap(i,:);
-  sh.MarkerFaceColor = cmap(i,:);
-  pax_ind = T_Passenger.passenger_StationID == i;
-  ph = scatter(pax_XY(pax_ind,1),pax_XY(pax_ind,2),200,'.');
-  ph.MarkerEdgeColor = cmap(i,:);
-  ph.MarkerFaceColor = cmap(i,:);
-  legendCell = [legendCell, {'Station',sprintf('Customers [%d]',sum(pax_ind))}];
-end
-
-% charger locations
-scatter(charger_XY(:,1),charger_XY(:,2),80,'filled','^','green');
-legendCell = [legendCell, {sprintf('Chargers [%d]',nCharger)}];
-
-axis equal; legend(legendCell)
-xlabel('X coordinate (km)'); ylabel('Y coordinate (km)')
-
-if any(paxMissed)
-  disp('These customers cant reach any meeting point:');
-  disp(pax_XY(paxMissed,:))
-  scatter(pax_XY(paxMissed,1),pax_XY(paxMissed,2),200,'k*');
-end
-
-% TITLE that notes various settings
-% if nStation>1
-%   title(sprintf('Station Gap = %.2f. Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
-%     Station_separation,BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
-% else
-%   title(sprintf('Meeting Point Separation= %.2f. Max  Walking Dist = %.2f. Customer radius = [%.2f,%.2f]',...
-%     BS_separation,maxWalkingDist,Pax_minRadius(1), Pax_maxRadius(1)))
-% end
-
-% draw circles around each passenger location of max walking distance
-% h_circles = viscircles(pax_XY, maxWalkingDist*ones(size(pax_XY,1),1), 'color', [1 0.9 0.9]);
 
 end

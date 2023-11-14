@@ -29,10 +29,11 @@
 % demandPeakness = 0; % 0 = uniform. 1 = peaked in middle
 % PLOTFLAG = 1; % plots the network data
 
-repo_flexbus = [get_repo_folder, 'Flexbus3_v0.7\'];
-save_Yumengdata_to = [repo_flexbus, 'data\yumengData\'];
-% saveData_UrbanMorph = [repo_folder, 'UrbanMorph\data\'];
-saveData_UrbanMorph = [repo_flexbus, 'data\toRun\'];
+repo_flexbus = [get_repo_folder, 'Flexbus3_v0.8.4\'];
+repo_urbanMorph = [get_repo_folder, 'UrbanMorph\'];
+% save_Yumengdata_to = [repo_flexbus, 'data\yumengData\'];
+% saveData_UrbanMorph = [repo_flexbus, 'data\urbanMorph_toRun\'];
+saveData_UrbanMorph = [repo_urbanMorph, 'data\'];
 
 nStations = 1;
 Station_separation = 3; % distance between multiple stations
@@ -40,47 +41,54 @@ nPassengers = 100; % number passengers to generate
 % Passengers will be generated uniformly distributed in an annulus around each station
 % minRadius and maxRadius can have single value = used for all stations
 % OR can be a row vector size [1 x nTransitStations]
-Pax_minRadius = 1.3; % min radius away from station for passenger locations
-Pax_maxRadius = 10.0; % max radius around station for passenger locations
+Pax_minRadius = 1.5; % min radius away from station for passenger locations
+Pax_maxRadius = 5.0; % max radius around station for passenger locations
 paxSeparation = 0.05; % min distance between passengers
-BS_separation = 1; % spacing for grid of potential bus stop locations
-maxWalkingDist = 1.2; % BS_separation*sqrt(2)/2; %
-nCharger  = 4; % how many chargers PER TOWN/TRANSIT STATION.
+BS_separation = 1.4; % spacing for grid of potential bus stop locations
+maxWalkingDist = 1.0; % BS_separation*sqrt(2)/2; %
+nCharger  = 2; % how many chargers PER TOWN/TRANSIT STATION.
 charger_radius = 3; % chargers located on circle around each town centre
-demandPeakness = 0; % 0 = uniform. 1 = peaked in middle
-PLOTFLAG = 1; % plots the network data
+demandPeakness = 2; % 0 = uniform. 1 = peaked in middle
 
 % ====== PARAMETERS for saving
-params.maxWalkingDist = round(maxWalkingDist,5);
-params.walkingSpeed = 0.085; % km/minute
-params.busSpeed = 0.83; % km/minute
-params.busStopServiceTime = 0.5; % minutes
-params.maxTransitWaitingTime = 15; % minutes
-params.nPax = nPassengers;
-params.Pax_minRadius = Pax_minRadius;
-params.Pax_maxRadius = Pax_maxRadius;
-params.paxSeparation = paxSeparation;
-params.BS_separation = BS_separation;
-params.nStation = nStations;
-params.nCharger = nCharger;
-params.chargerRadius = charger_radius;
-params.demandPeakness = demandPeakness;
-params = orderfields(params);
+p.maxWalkingDist = round(maxWalkingDist,5);
+p.walkingSpeed = 0.085; % km/minute
+p.busSpeed = 0.83; % km/minute
+p.busStopServiceTime = 0.5; % minutes
+p.maxTransitWaitingTime = 15; % minutes
+p.nPax = nPassengers;
+p.Pax_minRadius = Pax_minRadius;
+p.Pax_maxRadius = Pax_maxRadius;
+p.paxSeparation = paxSeparation;
+p.BS_separation = BS_separation;
+p.nStation = nStations;
+p.nCharger = nCharger;
+p.chargerRadius = charger_radius;
+p.demandPeakness = demandPeakness;
+p.stationSeparation = Station_separation;
+p = orderfields(p);
 
-SCENARIO = 'mp_density'; % 'sample_from_population'  'expanding_radius' 'mp_density' 'two_cities'
+PLOTFLAG = 1; % plots the network data
+SCENARIO = 'expanding_radius_fixedDensity'; % 'sample_from_population'  'expanding_radius' 'mp_density' 'two_cities'
 SAVE_TO_YUMENG = 0;
 SAVE_TO_URBANMORPH = 1;
 switch SCENARIO
+  case 'makeFigure'
+    rng('default') % for reproducability
+    % here generate the total scenario with all passengers
+    [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
+    this_instance = scenarioName(p);
+    fh = plotScenario(T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot);
+    print(fh, [saveFolder,'\',this_instance_folder,'.jpg'], '-djpeg', '-r300');
+    close(fh);
   case 'sample_from_population'
     %===========================================================================
     % Create one population and then sample from it
     %===========================================================================
     % here generate the total scenario with all passengers
-    [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot,fh] =...
-      generateScenario(saveData_UrbanMorph,nStations, Station_separation, nPassengers, Pax_minRadius, Pax_maxRadius,...
-      paxSeparation, maxWalkingDist, BS_separation, nCharger, charger_radius, demandPeakness, PLOTFLAG);
+    [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
 
-    % now subsample the T_passenger and write to yumeng style files.
+    % now subsample the T_passenger
     nDays = 30; nSample = 50;
     % ====== BUS FLEET
     % (need to amend bus fleet to be smaller for sampled daily customer numbers)
@@ -104,6 +112,9 @@ switch SCENARIO
       this_Pax = sort(randperm(nPassengers,nSample));
       pSchedule(:,i) = this_Pax ;
       T_thisPax = T_Passenger(this_Pax,:);
+
+
+
       if SAVE_TO_YUMENG
         saveFolder = [save_Yumengdata_to, sprintf('P%d_%dD%d_%03d',nPassengers,nSample,nDays,i)]; %#ok<*UNRCH>
         if ~isfolder(saveFolder), mkdir(saveFolder); end
@@ -120,7 +131,7 @@ switch SCENARIO
         writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
         writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
         writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
-        writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
+        writetable(struct2table(p),[saveFolder '\parameters.csv'],'Delimiter',',');
       end
       if SAVE_TO_YUMENG || SAVE_TO_URBANMORPH
         variables = whos;
@@ -132,50 +143,41 @@ switch SCENARIO
     end
     %===========================================================================
 
-  case 'expanding_radius'
+  case 'expanding_radius_fixedPop'
     %===========================================================================
     % create a sequence of cities and run each one
     %===========================================================================
     rng('default') % for reproducability
     N = 10; cityDiameter = linspace(2,30,N);
     for i = 1:N
-      Pax_maxRadius = cityDiameter(i); % max radius around station for passenger locations
+      p.Pax_maxRadius = cityDiameter(i); % max radius around station for passenger locations
       % here generate the total scenario with all passengers
-      [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot,fh] = ...
-        generateScenario(saveData_UrbanMorph,nStations, Station_separation, nPassengers, Pax_minRadius, Pax_maxRadius,...
-        paxSeparation, maxWalkingDist, BS_separation, nCharger, charger_radius, demandPeakness, PLOTFLAG);
-
-      this_instance_folder = sprintf('P%d_R%04.1f',nPassengers,Pax_maxRadius);
-      if SAVE_TO_YUMENG
-        saveFolder = [save_Yumengdata_to, this_instance_folder ]; % put this scenario in this folder
-        if ~isfolder(saveFolder), mkdir(saveFolder); end
-        saveToYumengFormat(saveFolder,T_busFleet, T_Passenger ,T_busStop,T_Charger,T_Station,allStationDeps,T_depot,maxWalkingDist)
-      end
-      if SAVE_TO_URBANMORPH
-        saveFolder = [saveData_UrbanMorph, this_instance_folder ]; % put this scenario in this folder
-        if ~isfolder(saveFolder), mkdir(saveFolder); end
-
-        writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
-        writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
-        writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
-        writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
-        writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
-        writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
-        writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
-        writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
-        print(fh, [saveFolder,'\',this_instance_folder,'.jpg'], '-djpeg', '-r300');
-        if ~PLOTFLAG, close(fh);  end
-
-      end
-      if SAVE_TO_YUMENG || SAVE_TO_URBANMORPH
-        variables = whos;
-        non_graphics_variables = variables(~startsWith({variables.class},'matlab.ui'));
-        variable_names = {non_graphics_variables.name};
-        save([saveFolder,'\ml_wkspce'],variable_names{:}) % save all setup parameters etc
-      end
+      [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
+       
+      this_instance_folder = scenarioName(p);
+      saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
+      scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
     end
 
-  
+  case 'expanding_radius_fixedDensity'
+    %===========================================================================
+    % create a sequence of cities and run each one
+    %===========================================================================
+    rng('default') % for reproducability
+    N = 10; cityDiameter = linspace(5,30,N);
+    baseArea = pi*(10.^2) - pi*(p.Pax_minRadius.^2); ppkm2 = 50/baseArea;
+    for i = 1:N
+      p.Pax_maxRadius = cityDiameter(i); % max radius around station for passenger locations
+      area = pi*(p.Pax_maxRadius.^2) - pi*(p.Pax_minRadius.^2);
+      p.nPax = ceil(ppkm2*area);
+      % here generate the total scenario with all passengers
+      [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
+       
+      this_instance_folder = scenarioName(p);
+      saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
+      scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
+    end
+
   case 'two_cities'
     %===========================================================================
     % create a sequence of city separations
@@ -183,89 +185,34 @@ switch SCENARIO
     rng('default') % for reproducability
     N = 10; cityseparation = linspace(3,25,N);
     for i = 1:N
-      Station_separation = cityseparation(i); % distance between multiple stations
+      p.stationSeparation = cityseparation(i); % distance between multiple stations
       % here generate the total scenario with all passengers
-      [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot,fh] = ...
-        generateScenario(saveData_UrbanMorph,nStations, Station_separation, nPassengers, Pax_minRadius, Pax_maxRadius,...
-        paxSeparation, maxWalkingDist, BS_separation, nCharger, charger_radius, demandPeakness, PLOTFLAG);
+      [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
 
-      this_instance_folder = sprintf('P%dR%04.1f_Sep%04.1f',nPassengers,Pax_maxRadius, Station_separation);
-      if SAVE_TO_YUMENG
-        saveFolder = [save_Yumengdata_to, this_instance_folder]; % put this scenario in this folder
-        if ~isfolder(saveFolder), mkdir(saveFolder); end
-        saveToYumengFormat(saveFolder,T_busFleet, T_Passenger ,T_busStop,T_Charger,T_Station,allStationDeps,T_depot,maxWalkingDist)
-      end
-      if SAVE_TO_URBANMORPH
-        saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
-        if ~isfolder(saveFolder), mkdir(saveFolder); end
-
-        writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
-        writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
-        writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
-        writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
-        writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
-        writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
-        writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
-        writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
-        %savefig(fh, [saveFolder,'\',this_instance_folder,'.fig']);
-        print(fh, [saveFolder,'\',this_instance_folder,'.jpg'], '-djpeg', '-r300');
-        if ~PLOTFLAG, close(fh);  end
-
-      end
-      if SAVE_TO_YUMENG || SAVE_TO_URBANMORPH
-        variables = whos;
-        non_graphics_variables = variables(~startsWith({variables.class},'matlab.ui'));
-        variable_names = {non_graphics_variables.name};
-        save([saveFolder,'\ml_wkspce'],variable_names{:}) % save all setup parameters etc
-      end
+      this_instance_folder = scenarioName(p);
+      saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
+      scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
     end
 
-  
+
   case 'mp_density'
     %===========================================================================
     % create a sequence of cities and run each one
     %===========================================================================
     rng('default') % for reproducability
     maxBS = sqrt(2)*maxWalkingDist;
-    N = 5; bs_distance= linspace(0.1,maxBS,N);
+    N = 10; bs_distance= linspace(0.1,maxBS,N);
     for i = 1:N
-      nPassengers = 50; % number passengers to generate
-      Pax_minRadius = 1.5; % min radius away from station for passenger locations
-      Pax_maxRadius = 10; % max radius around station for passenger locations
-      BS_separation = bs_distance(i);
+      p.nPax = 50; % number passengers to generate
+      p.Pax_minRadius = 1.5; % min radius away from station for passenger locations
+      p.Pax_maxRadius = 10; % max radius around station for passenger locations
+      p.BS_separation = bs_distance(i);
       % here generate the total scenario with all passengers
-      [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = ...
-        generateScenario(saveData_UrbanMorph,nStations, Station_separation, nPassengers, Pax_minRadius, Pax_maxRadius,...
-        paxSeparation, maxWalkingDist, BS_separation, nCharger, charger_radius, demandPeakness, PLOTFLAG);
+      [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
 
-
-      if SAVE_TO_YUMENG
-        saveFolder = [save_Yumengdata_to, sprintf('P%d_BS%04.1f',nPassengers,BS_separation)]; % put this scenario in this folder
-        if ~isfolder(saveFolder), mkdir(saveFolder); end
-        saveToYumengFormat(saveFolder,T_busFleet, T_Passenger ,T_busStop,T_Charger,T_Station,allStationDeps,T_depot,maxWalkingDist)
-      end
-      if SAVE_TO_URBANMORPH
-        saveFolder = [saveData_UrbanMorph, sprintf('P%d_BS%04.1f',nPassengers,BS_separation)]; % put this scenario in this folder
-        if ~isfolder(saveFolder), mkdir(saveFolder); end
-
-        writetable(T_busFleet,[saveFolder '\busFleet.csv'],'Delimiter',',');
-        writetable(T_Passenger,[saveFolder '\passengerData.csv'],'Delimiter',',')
-        writetable(T_busStop,[saveFolder '\busStopXY.csv'],'Delimiter',',')
-        writetable(T_Charger,[saveFolder '\chargerXY.csv'],'Delimiter',',')
-        writetable(T_Station,[saveFolder '\stationXY.csv'],'Delimiter',',')
-        writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
-        writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
-        writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
-        print(fh, [saveFolder,'\',this_instance_folder,'.jpg'], '-djpeg', '-r300');
-        if ~PLOTFLAG, close(fh);  end
-
-      end
-      if SAVE_TO_YUMENG || SAVE_TO_URBANMORPH
-        variables = whos;
-        non_graphics_variables = variables(~startsWith({variables.class},'matlab.ui'));
-        variable_names = {non_graphics_variables.name};
-        save([saveFolder,'\ml_wkspce'],variable_names{:}) % save all setup parameters etc
-      end
+      this_instance_folder = scenarioName(p);
+      saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
+      scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
     end
 end
 
