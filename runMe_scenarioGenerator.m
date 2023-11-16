@@ -54,7 +54,7 @@ p.stationSeparation = 3;
 p = orderfields(p);
 
 PLOTFLAG = 1; % plots the network data
-SCENARIO = 'mp_density'; % 'sample_from_population'  'expanding_radius' 'mp_density' 'two_cities'
+SCENARIO = 'radius_and_population'; % 'sample_from_population'  'expanding_radius' 'mp_density' 'two_cities'
 SAVE_TO_YUMENG = 0;
 SAVE_TO_URBANMORPH = 1;
 switch SCENARIO
@@ -128,18 +128,36 @@ switch SCENARIO
     end
     %===========================================================================
 
+  case 'radius_and_population'
+    %===========================================================================
+    % create a sequence of cities and run each one
+    %===========================================================================
+    nC = 6; nP = 5;
+    cityDiameter = linspace(2,30,nC);
+    pop = ceil(linspace(15,100,nP));
+    for j = 1:nP
+      p.nPax = pop(j);
+      for i = 1:nC
+        p.Pax_maxRadius = cityDiameter(i); % max radius around station for passenger locations
+        % here generate the total scenario with all passengers
+        [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
+
+        this_instance_folder = scenarioName(p);
+        saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
+        scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
+      end
+    end
   case 'expanding_radius_fixedPop'
     %===========================================================================
     % create a sequence of cities and run each one
     %===========================================================================
-    rng('default') % for reproducability
-    N = 10; cityDiameter = linspace(2,30,N);
+    nC = 10; cityDiameter = linspace(2,30,nC);
     p.nPax = 100;
-    for i = 1:N
+    for i = 1:nC
       p.Pax_maxRadius = cityDiameter(i); % max radius around station for passenger locations
       % here generate the total scenario with all passengers
       [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
-       
+
       this_instance_folder = scenarioName(p);
       saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
       scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
@@ -150,44 +168,26 @@ switch SCENARIO
     % create a sequence of cities and run each one
     %===========================================================================
     rng('default') % for reproducability
-    N = 10; cityDiameter = linspace(5,30,N);
+    nC = 10; cityDiameter = linspace(5,30,nC);
     baseArea = pi*(10.^2) - pi*(p.Pax_minRadius.^2); ppkm2 = 25/baseArea;
-    for i = 1:N
+    for i = 1:nC
       p.Pax_maxRadius = cityDiameter(i); % max radius around station for passenger locations
       area = pi*(p.Pax_maxRadius.^2) - pi*(p.Pax_minRadius.^2);
       p.nPax = ceil(ppkm2*area);
       % here generate the total scenario with all passengers
       [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
-       
-      this_instance_folder = scenarioName(p);
-      saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
-      scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
-    end
-
-  case 'two_cities'
-    %===========================================================================
-    % create a sequence of city separations
-    %===========================================================================
-    rng('default') % for reproducability
-    N = 10; cityseparation = linspace(3,25,N);
-    for i = 1:N
-      p.stationSeparation = cityseparation(i); % distance between multiple stations
-      % here generate the total scenario with all passengers
-      [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
 
       this_instance_folder = scenarioName(p);
       saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
       scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
     end
-
 
   case 'mp_density'
     %===========================================================================
     % create a sequence of cities and run each one
     %===========================================================================
-    rng('default') % for reproducability
-        N = 5; bs_distance= linspace(0.2,3,N);
-    for i = 1:N
+    nC = 5; bs_distance= linspace(0.2,3,nC);
+    for i = 1:nC
       p.nPax = 100; % number passengers to generate
       p.Pax_minRadius = 1.5; % min radius away from station for passenger locations
       p.Pax_maxRadius = 7.5; % max radius around station for passenger locations
@@ -200,6 +200,22 @@ switch SCENARIO
       saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
       scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
     end
+
+  case 'two_cities'
+    %===========================================================================
+    % create a sequence of city separations
+    %===========================================================================
+    nC = 10; cityseparation = linspace(3,25,nC);
+    for i = 1:nC
+      p.stationSeparation = cityseparation(i); % distance between multiple stations
+      % here generate the total scenario with all passengers
+      [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
+
+      this_instance_folder = scenarioName(p);
+      saveFolder = [saveData_UrbanMorph, this_instance_folder]; % put this scenario in this folder
+      scenarioSave(saveFolder, p, T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
+    end
+
 end
 
 
