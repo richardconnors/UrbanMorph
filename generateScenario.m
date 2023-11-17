@@ -22,7 +22,7 @@ busType = 1; maxPax = 20; maxKWH = 35.8; % kWh - does this correspond to 100% SO
 minSOC = 10; % percent
 maxSOC = 80; % percent
 SOC = 20; consumption = 0.24; %kW.km
-nBus = ceil(2*nPax/maxPax);
+nBus = 100;
 busFleet1 = table(busType, maxPax, maxKWH, minSOC, maxSOC, SOC, consumption);
 busFleet1 = repmat(busFleet1,nBus,1);
 % distribute SOC amongst buses

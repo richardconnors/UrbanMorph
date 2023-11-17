@@ -16,5 +16,5 @@ function name = scenarioName(params)
 % params.chargerRadius = charger_radius;
 % params.demandPeakness = demandPeakness;
 
-name = sprintf('P%d_S%d_R%04.1f_W%03.1f_MP%04.1f_SS%04.1f_DP%03.1f',params.nPax,params.nStation,params.Pax_maxRadius,...
+name = sprintf('P%03d_S%d_R%04.1f_W%03.1f_MP%04.1f_SS%04.1f_DP%03.1f',params.nPax,params.nStation,params.Pax_maxRadius,...
   params.maxWalkingDist,params.BS_separation,params.stationSeparation, params.demandPeakness);
