@@ -6,31 +6,34 @@
 % sort out folder and file names
 % repo_flexbus = [get_repo_folder, 'Flexbus3_v0.8.4\'];
 % data_to_load = [repo_flexbus, 'results\grid_results_v2\'];
-data_to_load = 'Q:\REPOS\UrbanMorph\data\';
+% data_to_load = 'Q:\REPOS\UrbanMorph\data\';
+data_to_load = 'C:\Users\richard.connors\Documents\REPOS\UrbanMorph\data\';
 
-
-% get list of all folders we need to iterate through & sift them into  viable and non-viable folders
-badDataDir = 'Q:\REPOS\UrbanMorph\failed_data\';
-items = dir(data_to_load);
-% Check if the item is a directory and not '.' or '..'
-items = items([items.isdir]); items = items(~ismember({items.name}, {'.', '..'}));
-nInstance = numel(items); % this is the instance folder
-for i = 1:nInstance % this is the instance folder
-  thisFolder = [data_to_load, items(i).name, filesep];
-  folderItems = dir(thisFolder); allFiles = string({folderItems.name});
-  cus_file = allFiles(contains(allFiles,'cus_'));
-  route_files =  allFiles(startsWith(allFiles,'route_detail_'));
-  if isempty(cus_file) || isempty(route_files) % we have some results in this instance
-    % move this folder to failed_instances
-    movefile(thisFolder,badDataDir);
-  end
-end
+% % ****** REMOVE NO VIABLE RUNS ********
+% badDataDir = 'Q:\REPOS\UrbanMorph\failed_data\';
+% items = dir(data_to_load);
+% % Check if the item is a directory and not '.' or '..'
+% items = items([items.isdir]); items = items(~ismember({items.name}, {'.', '..'}));
+% nInstance = numel(items); % this is the instance folder
+% for i = 1:nInstance % this is the instance folder
+%   thisFolder = [data_to_load, items(i).name, filesep];
+%   folderItems = dir(thisFolder); allFiles = string({folderItems.name});
+%   cus_file = allFiles(contains(allFiles,'cus_'));
+%   route_files =  allFiles(startsWith(allFiles,'route_detail_'));
+%   if isempty(cus_file) || isempty(route_files) % we have some results in this instance
+%     % move this folder to failed_instances
+%     movefile(thisFolder,badDataDir);
+%   end
+% end
 
 items = dir(data_to_load);
 % Check if the item is a directory and not '.' or '..'
 items = items([items.isdir]); items = items(~ismember({items.name}, {'.', '..'}));
 nInstance = numel(items); % this is the instance folder
 allP = table;
+allBus = table;
+allPax = table;
+allI = table;
 for i = 1:nInstance % this is the instance folder
   thisFolder = [data_to_load, items(i).name, filesep];
   folderItems = dir(thisFolder); allFiles = string({folderItems.name});
@@ -49,10 +52,9 @@ for i = 1:nInstance % this is the instance folder
     % filename = fullfile(thisFolder, allFiles(contains(allFiles,'depotXY'))); T_depot = readtable(filename);
 
     allP = [allP;p];
-    cus_data = readtable(fullfile(thisFolder, cus_file));  % You can use readmatrix for newer MATLAB versions
+    cus_data = readtable(fullfile(thisFolder, cus_file));  
     allCus = cus_data.cus;
-    % these customers should be in the same order as in T_Passenger so we
-    % can match the ride time etc
+    % these customers should be in the same order as in T_Passenger so we can match the ride time etc
     T_Passenger.RideTime = cus_data.ride_time; T_Passenger.WalkTime = cus_data.cus_walking_time;
     this_rideTime = cus_data.ride_time; this_rideTime(~this_rideTime) = NaN;
     paxOK = cus_data.ride_time>0; % these are the served customers
@@ -66,12 +68,14 @@ for i = 1:nInstance % this is the instance folder
       R = readtable(fullfile(thisFolder,route_files{ff}));  % You can use readmatrix for newer MATLAB versions
       busOccupancyData = [busOccupancyData; R.num_passenger];
       allTours{end+1} = [R.x, R.y]; %#ok<*SAGROW>
-
-      tourLegs_kms = [tourLegs_kms; sqrt(diff(R.x).^2 + diff(R.y).^2)];
+      
+      this_tourLegs_kms = sqrt(diff(R.x).^2 + diff(R.y).^2);
+      tourLegs_kms = [tourLegs_kms; this_tourLegs_kms];
       tourLegs_Occ = [tourLegs_Occ; R.num_passenger(1:end-1)];
-      tourDist = [tourDist; sum(tourLegs_kms)];
+      tourDist = [tourDist; sum(this_tourLegs_kms)];
       
 
+      
       C = string(R.cus_set); C = C(~startsWith(C,"Int64"));
       pattern = '\d+';
       % Loop through each element of the string array
@@ -117,8 +121,7 @@ h1.MarkerFaceAlpha = 0.7;
 % fleet size
 figure;
 h1 = scatter3(allP.nPax, allP.Pax_maxRadius, fleetSize);
-xlabel('nCustomers'); ylabel('City Radius'); zlabel('KPI')
-title('Fleet Size')
+xlabel('nCustomers'); ylabel('City Radius'); zlabel('fleet size')
 cmap=colormap_generator(2);
 h1.SizeData = 40;
 h1.MarkerFaceColor = cmap(1,:);

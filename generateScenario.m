@@ -40,7 +40,6 @@ T_busFleet = busFleet1;
 % T_busFleet = [busFleet1;busFleet2];
 
 % ====== START network geometry
-rng default % make randomness repeatable
 x0 = 0; y0 = 0; % centre (could geolocate this later)
 
 % ====== GENERATE LOCATIONS FOR TRANSIT, CHARGERS, PAX
@@ -226,10 +225,9 @@ T_busStop = table(busStop_ID,busStop_X,busStop_Y);
 % ====== end GENERATE BUS STOPS
 
 depot_ID = 1;
-depot_X = round(mean(busStop_X),5);
-depot_Y = round(mean(busStop_Y),5);
-% for Arlon
-% depot_X = 0; depot_Y = -1;
+% depot_X = round(mean(busStop_X),5);
+% depot_Y = round(mean(busStop_Y),5);
+depot_X = 0; depot_Y = 0;
 T_depot = table(depot_ID,depot_X,depot_Y);
 
 end
