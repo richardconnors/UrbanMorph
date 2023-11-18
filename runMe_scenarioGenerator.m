@@ -71,14 +71,16 @@ for j = 1:nP % each population size
     [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
     p.nPax = cityCustomers(j);
 
-    % downsize bus fleet - will be different for each instance of i,j loops
-    thisT_busFleet = T_busFleet([],:);
-    nBusTypes = max(T_busFleet.busType);
-    for bb = 1:nBusTypes
-      ind = find(T_busFleet.busType==bb);
-      nThisBus = numel(ind); newNumBus = ceil(nThisBus*p.nPax./p.nTotalPop);
-      thisT_busFleet = [thisT_busFleet; T_busFleet(ind(1:newNumBus),:)]; %#ok<AGROW>
-    end
+    % % downsize bus fleet?? - will be different for each instance of i,j loops
+    % thisT_busFleet = T_busFleet([],:);
+    % nBusTypes = max(T_busFleet.busType);
+    % for bb = 1:nBusTypes
+    %   ind = find(T_busFleet.busType==bb);
+    %   nThisBus = numel(ind); newNumBus = ceil(nThisBus*p.nPax./p.nTotalPop);
+    %   thisT_busFleet = [thisT_busFleet; T_busFleet(ind(1:newNumBus),:)]; %#ok<AGROW>
+    % end
+    thisT_busFleet = T_busFleet;
+
 
     for rr = 1:nRuns
       % to ensure always get nSample passengers

@@ -7,7 +7,7 @@
 % repo_flexbus = [get_repo_folder, 'Flexbus3_v0.8.4\'];
 % data_to_load = [repo_flexbus, 'results\grid_results_v2\'];
 % data_to_load = 'Q:\REPOS\UrbanMorph\data\';
-data_to_load = [get_repo_folder, 'UrbanMorph\sampling_data_trial\'];
+data_to_load = [get_repo_folder, 'UrbanMorph\sampling_data\'];
 
 % % ****** REMOVE NOT VIABLE RUNS ********
 % badDataDir = 'Q:\REPOS\UrbanMorph\failed_data\';
@@ -91,11 +91,11 @@ return
 
 % Total veh kms
 figure;
-h1 = scatter3(allP.nPax, allP.Pax_maxRadius, 2*totalDirectDistance);
+h1 = scatter3(R_instance.nPax, R_instance.Pax_maxRadius, R_instance.VehEmptyKms);
 hold on
 xlabel('nCustomers'); ylabel('City Radius'); zlabel('KPI')
-h2 = scatter3(allP.nPax, allP.Pax_maxRadius, totalTourDist);
-legend({'Total Direct Distance','Total Tour Distance'})
+% h2 = scatter3(R_instance.nPax, R_instance.Pax_maxRadius, R_instance.VehKms./R_instance.CusDirectKms);
+% legend({'Total Direct Distance','Total Tour Distance'})
 cmap=colormap_generator(2);
 h1.SizeData = 40;
 h1.MarkerFaceColor = cmap(1,:);
@@ -106,9 +106,9 @@ h2.MarkerFaceAlpha = 0.7;
 
 % relative vehkms compared with taxi
 figure;
-h1 = scatter3(allP.nPax, allP.Pax_maxRadius, totalDirectDistance./totalTourDist);
+h1 = scatter3(R_instance.nPax, R_instance.Pax_maxRadius, R_instance.VehKms./R_instance.CusDirectKms);
 xlabel('nCustomers'); ylabel('City Radius'); zlabel('KPI')
-title('Taxi Distance / DRT distance')
+title('Veh kms / Direct kms')
 cmap=colormap_generator(2);
 h1.SizeData = 40;
 h1.MarkerFaceColor = cmap(1,:);
@@ -129,10 +129,21 @@ xlabel('nCustomers'); ylabel('City Radius'); zlabel('Occupancy')
 fh = boxPlot3D(R_bus.CusTravelledKms./R_bus.VehKms, R_bus.nPax, R_bus.Pax_maxRadius);
 xlabel('nCustomers'); ylabel('City Radius'); zlabel('Bus Utilization Ratio')
 
-% how busy or well used are buses?
-% maybe plot nuber of passenger kms compared with num bus kms?
-
-
 % chargeable kms vs bus kms
+fh = boxPlot3D(R_bus.CusDirectKms./R_bus.VehKms, R_bus.nPax, R_bus.Pax_maxRadius);
+xlabel('nCustomers'); ylabel('City Radius'); zlabel('Chargeable Ratio')
+
+% individual passenger experience variability
+this_popRad = R_Pax(and(R_Pax.nPax == 20,R_Pax.Pax_maxRadius == 3),:);
+boxchart(this_popRad.paxID,this_popRad.rideTime)
+xlabel('Customer ID')
+ylabel('Ride Time (minutes)')
+title('Box Plot of Ride Time by Customer ID')
+
+% Sort the ID values by the mean distanceHome in ascending order
+dists = grpstats(this_popRad.CusDirectKms,this_popRad.paxID,'mean')
+[~,idx] = sort(dists,'ascend');
+sorted_ID = this_popRad.paxID(idx);
+boxchart(this_popRad.paxID,this_popRad.rideTime,'XData',idx)
 
 
