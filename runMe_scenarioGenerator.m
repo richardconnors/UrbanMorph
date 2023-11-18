@@ -31,7 +31,7 @@
 
 repo_flexbus = [get_repo_folder, 'Flexbus3_v0.8.4\'];
 repo_urbanMorph = [get_repo_folder, 'UrbanMorph\'];
-saveData_UrbanMorph = [repo_urbanMorph, 'sampling_data\'];
+saveData_UrbanMorph = [repo_urbanMorph, 'sampling_data_high\'];
 
 % ====== PARAMETERS for saving
 p.maxWalkingDist = 1.0; % BS_separation*sqrt(2)/2; %
@@ -39,8 +39,8 @@ p.walkingSpeed = 0.085; % km/minute
 p.busSpeed = 0.83; % km/minute
 p.busStopServiceTime = 0.5; % minutes
 p.maxTransitWaitingTime = 15; % minutes
-p.nSample = 20;
-p.nPax = 2*p.nSample;
+p.nTotalPop = 50;
+p.nPax = 20;
 p.Pax_minRadius = 1.5;
 p.Pax_maxRadius = 5.0;
 p.paxSeparation = 0.05;
@@ -53,46 +53,44 @@ p.stationSeparation = 3;
 p = orderfields(p);
 
 rng('shuffle') 
-nC = 7; cityDiameter = linspace(3,40,nC); 
-nP = 8;  pop = ceil(linspace(20,300,nP));
-nRuns = 10; % with random shuffle
-for j = 1:nP
-  p.nPax = pop(j); p.nSample = ceil(0.5*p.nPax);
-
-  for i = 1:nC
+% nC = 7; cityDiameter = linspace(3,30,nC); 
+% nP = 4;  cityCustomers = ceil(linspace(20,100,nP)); % customers to pick up each day
+cityDiameter = [3,5,10,15,20,30]; nC = numel(cityDiameter);
+%cityCustomers = [20,50,100,150]; nP = numel(cityCustomers);  
+cityCustomers = [250,500]; nP = numel(cityCustomers);  
+nRuns = 20; % with random shuffle
+for j = 1:nP % each population size
+  p.nPax = cityCustomers(j); p.nTotalPop = 2*p.nPax;
+  for i = 1:nC % each city size
     p.Pax_maxRadius = cityDiameter(i); % max radius around station for passenger locations
-    % here generate the total scenario with all passengers
-
-    %===========================================================================
+    
+    %===================================================================
     % Create one population and then sample from it
-    %===========================================================================
-    % here generate the total scenario with all passengers
+    %==================================================================
+    p.nPax = p.nTotalPop; % to do generation
     [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = generateScenario(p);
+    p.nPax = cityCustomers(j);
 
-    % downsize bus fleet
+    % downsize bus fleet - will be different for each instance of i,j loops
     thisT_busFleet = T_busFleet([],:);
     nBusTypes = max(T_busFleet.busType);
     for bb = 1:nBusTypes
       ind = find(T_busFleet.busType==bb);
-      nThisBus = numel(ind); newNumBus = ceil(nThisBus*p.nSample./p.nPax);
+      nThisBus = numel(ind); newNumBus = ceil(nThisBus*p.nPax./p.nTotalPop);
       thisT_busFleet = [thisT_busFleet; T_busFleet(ind(1:newNumBus),:)]; %#ok<AGROW>
     end
 
     for rr = 1:nRuns
       % to ensure always get nSample passengers
-      thisPax = randperm(p.nPax);
-      thisPax = sort(thisPax(1:p.nSample));
+      thisPax = randperm(p.nTotalPop); % reorder all pax ids
+      thisPax = sort(thisPax(1:p.nPax)); % take first few ids and re-sort
       thisT_Passenger = T_Passenger(thisPax,:);
 
 
       % calculate bus stops we need to use for this case
-      % for each customer find nearest meeting point
-      % check within walking distance
       BS_XY = [T_busStop.busStop_X,T_busStop.busStop_Y];
       pax_XY = [thisT_Passenger.passenger_X,thisT_Passenger.passenger_Y];
-      % remove potential bus stops more than walking distance away from any pax
-      % for each bus stop search amongst ALL pax locations to find nearest pax
-      % index those BS with nearest pax within maxWalkingDist
+      % remove bus stops more than walking distance away from any pax
       [~,dist] = dsearchn(pax_XY,BS_XY);
       BSinReach = dist<=p.maxWalkingDist;
       nBS = sum(BSinReach);

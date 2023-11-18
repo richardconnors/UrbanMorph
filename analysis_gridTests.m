@@ -7,9 +7,9 @@
 % repo_flexbus = [get_repo_folder, 'Flexbus3_v0.8.4\'];
 % data_to_load = [repo_flexbus, 'results\grid_results_v2\'];
 % data_to_load = 'Q:\REPOS\UrbanMorph\data\';
-data_to_load = 'C:\Users\richard.connors\Documents\REPOS\UrbanMorph\data\';
+data_to_load = [get_repo_folder, 'UrbanMorph\sampling_data_trial\'];
 
-% % ****** REMOVE NO VIABLE RUNS ********
+% % ****** REMOVE NOT VIABLE RUNS ********
 % badDataDir = 'Q:\REPOS\UrbanMorph\failed_data\';
 % items = dir(data_to_load);
 % % Check if the item is a directory and not '.' or '..'
@@ -29,69 +29,65 @@ data_to_load = 'C:\Users\richard.connors\Documents\REPOS\UrbanMorph\data\';
 items = dir(data_to_load);
 % Check if the item is a directory and not '.' or '..'
 items = items([items.isdir]); items = items(~ismember({items.name}, {'.', '..'}));
-nInstance = numel(items); % this is the instance folder
-allP = table;
-allBus = table;
-allPax = table;
-allI = table;
-for i = 1:nInstance % this is the instance folder
+nFolders = numel(items); % this is the instance folder
+
+nZ = zeros(nFolders,1);
+R_instance = table(nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,...
+  'VariableNames', {'id','nPax','Pax_maxRadius', 'BS_separation',...
+  'maxWalkingDist', 'FleetSize', 'VehKms', 'VehEmptyKms', 'CusDirectKms', 'CusTravelledKms'});
+R_bus = table([],[],[],[],[],[],[],[],[],[], 'VariableNames', {'id','nPax','Pax_maxRadius', 'BS_separation','maxWalkingDist',...
+  'VehKms','VehEmptyKms', 'CusDirectKms', 'CusTravelledKms','MaxOcc'});
+R_Pax = table([],[],[],[],[],[],[],[],[],[], 'VariableNames', {'id','nPax','Pax_maxRadius', 'BS_separation','maxWalkingDist',...
+  'paxID','cusID','CusDirectKms','rideTime','walkTime'});
+
+for i = 1:nFolders % this is the instance folder
   thisFolder = [data_to_load, items(i).name, filesep];
-  folderItems = dir(thisFolder); allFiles = string({folderItems.name});
-  cus_file = allFiles(contains(allFiles,'cus_'));
-  route_files =  allFiles(startsWith(allFiles,'route_detail_'));
+  folderItems = dir(thisFolder); 
+  allFiles = string({folderItems.name});
+
+  cus_file = allFiles(contains(allFiles,'cus_')); route_files =  allFiles(startsWith(allFiles,'route_detail_'));
   if ~isempty(cus_file) && ~isempty(route_files) % we have some results in this instance
 
     % load all the usual scenario tables and params
     params_file = fullfile(thisFolder, allFiles(contains(allFiles,'parameters'))); p = readtable(params_file);
-    filename = fullfile(thisFolder, allFiles(contains(allFiles,'passenger'))); T_Passenger = readtable(filename);
-    % filename = fullfile(thisFolder, allFiles(contains(allFiles,'busFleet'))); T_busFleet = readtable(filename);
-    % filename = fullfile(thisFolder, allFiles(contains(allFiles,'busStopXY'))); T_busStop = readtable(filename);
-    % filename = fullfile(thisFolder, allFiles(contains(allFiles,'chargerXY')));  T_Charger = readtable(filename);
-    % filename = fullfile(thisFolder, allFiles(contains(allFiles,'stationXY'))); T_Station = readtable(filename);
-    % filename = fullfile(thisFolder, allFiles(contains(allFiles,'transitTimetable'))); allStationDeps = readtable(filename);
-    % filename = fullfile(thisFolder, allFiles(contains(allFiles,'depotXY'))); T_depot = readtable(filename);
+    filename = fullfile(thisFolder, allFiles(contains(allFiles,'passenger'))); T_Pax = readtable(filename);
 
-    allP = [allP;p];
-    cus_data = readtable(fullfile(thisFolder, cus_file));  
-    allCus = cus_data.cus;
-    % these customers should be in the same order as in T_Passenger so we can match the ride time etc
-    T_Passenger.RideTime = cus_data.ride_time; T_Passenger.WalkTime = cus_data.cus_walking_time;
-    this_rideTime = cus_data.ride_time; this_rideTime(~this_rideTime) = NaN;
-    paxOK = cus_data.ride_time>0; % these are the served customers
-    
-    busOccupancyData = []; % for histogram of bus occupancy per trip
-    servedCus = []; % which customers are served/missed
-    allTours = {}; % want to plot a line for each tour
-    tourDist = []; tourLegs_kms = []; tourLegs_Occ = [];
-    fleetSize(i) = numel(route_files);
-    for ff = 1:fleetSize(i) % one for each bus?
+    % allP = [allP;p]; % save these params
+    T_C = readtable(fullfile(thisFolder, cus_file)); T_Pax = [T_Pax, T_C]; %#ok<AGROW>
+    paxOK = T_Pax.ride_time>0; % these are the served customers
+
+    this_Pax = table(i*ones(p.nPax,1), p.nPax*ones(p.nPax,1), p.Pax_maxRadius*ones(p.nPax,1), p.BS_separation*ones(p.nPax,1),p.maxWalkingDist*ones(p.nPax,1),...
+      T_Pax.passenger_ID, T_Pax.cus, T_Pax.DistanceFromStation, T_Pax.ride_time, T_Pax.cus_walking_time,....
+      'VariableNames', {'id','nPax','Pax_maxRadius', 'BS_separation','maxWalkingDist','paxID','cusID','CusDirectKms','rideTime','walkTime'});
+    R_Pax = [R_Pax;this_Pax]; %#ok<AGROW>
+
+    this_fleetSize = numel(route_files);
+    % new instance so we zero all the totals
+    total_veh_kms = 0; total_empty_kms = 0; total_cus_kms = 0; total_direct_kms = 0;
+    for ff = 1:this_fleetSize % one for each bus. Could do multiple loops
       R = readtable(fullfile(thisFolder,route_files{ff}));  % You can use readmatrix for newer MATLAB versions
-      busOccupancyData = [busOccupancyData; R.num_passenger];
-      allTours{end+1} = [R.x, R.y]; %#ok<*SAGROW>
+      this_leg_kms = sqrt(diff(R.x).^2 + diff(R.y).^2);
+      this_leg_occ = R.num_passenger(1:end-1);
+      this_cus_kms = this_leg_kms'*this_leg_occ; % empty bus automatically not counted
+      this_empty_kms = this_leg_kms'*~this_leg_occ; % empty bus automatically not counted
       
-      this_tourLegs_kms = sqrt(diff(R.x).^2 + diff(R.y).^2);
-      tourLegs_kms = [tourLegs_kms; this_tourLegs_kms];
-      tourLegs_Occ = [tourLegs_Occ; R.num_passenger(1:end-1)];
-      tourDist = [tourDist; sum(this_tourLegs_kms)];
-      
+      C = string(R.cus_set); C = C(~startsWith(C,"Int64")); % extract customer numbers on this bus
+      this_bus_cus = cell2mat(cellfun(@str2double, regexp(C(:)', '\d+', 'match'), 'UniformOutput', false));
 
-      
-      C = string(R.cus_set); C = C(~startsWith(C,"Int64"));
-      pattern = '\d+';
-      % Loop through each element of the string array
-      for ii = 1:numel(C)
-        % Find all numerical values in the current string
-        matches = regexp(C(ii), pattern, 'match');
-        % Convert the matched values to a numeric array and append them to the vector
-        servedCus = [servedCus, matches]; %#ok<*AGROW>
-      end
-      servedCus = unique(str2double(servedCus));
+      this_direct_kms = sum(T_Pax.DistanceFromStation(ismember(T_Pax.cus, this_bus_cus)));
+      total_veh_kms = total_veh_kms + sum(this_leg_kms);
+      total_empty_kms = total_empty_kms + this_empty_kms;
+      total_cus_kms = total_cus_kms + this_cus_kms;
+      total_direct_kms = total_direct_kms + this_direct_kms;
+      R_bus(end+1,:) = {i,p.nPax,p.Pax_maxRadius,p.BS_separation,p.maxWalkingDist,sum(this_leg_kms),this_empty_kms,this_direct_kms,this_cus_kms,max(this_leg_occ)}; %#ok<*SAGROW>
+
     end % loop bus routes
-    totalTourDist(i) = sum(tourDist);
-    nServed(i) = sum(paxOK);
-    totalDirectDistance(i) = sum(T_Passenger.DistanceFromStation(paxOK));
+    R_instance{i,:} = [i,p.nPax,p.Pax_maxRadius,p.BS_separation,p.maxWalkingDist,this_fleetSize,total_veh_kms,total_empty_kms,total_direct_kms,total_cus_kms];
   end % instance (non-empty)
 end
+return
+
+
 
 % Total veh kms
 figure;
@@ -120,15 +116,18 @@ h1.MarkerFaceAlpha = 0.7;
 
 % fleet size
 figure;
-h1 = scatter3(allP.nPax, allP.Pax_maxRadius, fleetSize);
+h1 = scatter3(allP.nPax, allP.Pax_maxRadius, this_fleetSize);
 xlabel('nCustomers'); ylabel('City Radius'); zlabel('fleet size')
 cmap=colormap_generator(2);
 h1.SizeData = 40;
 h1.MarkerFaceColor = cmap(1,:);
 h1.MarkerFaceAlpha = 0.7;
 
-fh = boxPlot3D(fleetSize, allP.nPax, allP.Pax_maxRadius);
-xlabel('nCustomers'); ylabel('City Radius'); zlabel('Fleet Size')
+fh = boxPlot3D(R_bus.MaxOcc, R_bus.nPax, R_bus.Pax_maxRadius);
+xlabel('nCustomers'); ylabel('City Radius'); zlabel('Occupancy')
+
+fh = boxPlot3D(R_bus.CusTravelledKms./R_bus.VehKms, R_bus.nPax, R_bus.Pax_maxRadius);
+xlabel('nCustomers'); ylabel('City Radius'); zlabel('Bus Utilization Ratio')
 
 % how busy or well used are buses?
 % maybe plot nuber of passenger kms compared with num bus kms?
