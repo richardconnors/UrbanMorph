@@ -1,5 +1,5 @@
-load GRIDTESTS_LOADED
-
+load GRIDTESTS_PROCESSED
+% load BICENTRIC_PROCESSED
 % Total veh kms
 figure;
 h1 = scatter3(R_instance.nPax, R_instance.Pax_maxRadius, R_instance.VehEmptyKms);
@@ -24,15 +24,22 @@ h1.SizeData = 40;
 h1.MarkerFaceColor = cmap(1,:);
 h1.MarkerFaceAlpha = 0.7;
 
-fh1 = boxPlot3D(R_bus.MaxOcc, R_bus.nPax, R_bus.Pax_maxRadius);
-xlabel('nCustomers'); ylabel('City Radius'); zlabel('Occupancy')
+fh1 = boxPlot3D(R_instance.FleetSize, R_instance.nPax, R_instance.Pax_maxRadius);
+xlabel('nCustomers'); ylabel('City Radius'); zlabel('Fleet Size')
+title('OPERATOR')
 
-fh2 = boxPlot3D(R_bus.CusTravelledKms./R_bus.VehKms, R_bus.nPax, R_bus.Pax_maxRadius);
+fh2 = boxPlot3D(R_bus.MaxOcc, R_bus.nPax, R_bus.Pax_maxRadius);
+xlabel('nCustomers'); ylabel('City Radius'); zlabel('Maximum Occupancy')
+title('OPERATOR')
+
+fh3 = boxPlot3D(R_bus.CusTravelledKms./R_bus.VehKms, R_bus.nPax, R_bus.Pax_maxRadius);
 xlabel('nCustomers'); ylabel('City Radius'); zlabel('Bus Utilization Ratio')
+title('OPERATOR')
 
 % chargeable kms vs bus kms
-fh3 = boxPlot3D(R_bus.CusDirectKms./R_bus.VehKms, R_bus.nPax, R_bus.Pax_maxRadius);
+fh4 = boxPlot3D(R_bus.CusDirectKms./R_bus.VehKms, R_bus.nPax, R_bus.Pax_maxRadius);
 xlabel('nCustomers'); ylabel('City Radius'); zlabel('Chargeable Ratio')
+title('OPERATOR')
 
 
 % ======================================================
@@ -54,9 +61,14 @@ for i = 1:numel(cityP)
     hold on
     bh2 = boxchart(thisR.CusDirectKms,thisR.walkTime);
     bh2.BoxWidth = max(thisR.CusDirectKms)*0.2/30;
-    legend({'Ride Time','Walk Time'},'location','northwest')
-    axis tight;
+    % plot the 0.83 km/min line and the 1.5 multiplier
+    uh = line([0,cityS(j)],[0,1.5*cityS(j)./p.busSpeed]);
+    uh.LineWidth = 2; uh.Color = 'k'; uh.LineStyle = ":";
+    lh = line([0,cityS(j)],[0,cityS(j)./p.busSpeed]);
+    lh.LineWidth = 2; lh.Color = 'k'; lh.LineStyle = "--";
+    ax = gca; ax.XLim = [0,cityS(j)]; ax.YLim = [0,max(prctile(thisR.walkTime,95),1.2*1.5*cityS(j)./p.busSpeed)];
     
+    legend({'Ride Time','Walk Time','Max Rerouting','Direct Service'},'location','northwest')
 %     thisR2 = thisR(:,["paxID","rideTime","walkTime","CusDirectKms"]);
 %     stdDevData = grpstats(thisR,"paxID",["std","mean"]);
 %     figure; scatter(stdDevData.mean_CusDirectKms,stdDevData.std_rideTime)

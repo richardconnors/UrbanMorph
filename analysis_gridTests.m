@@ -7,7 +7,7 @@
 % repo_flexbus = [get_repo_folder, 'Flexbus3_v0.8.4\'];
 % data_to_load = [repo_flexbus, 'results\grid_results_v2\'];
 % data_to_load = 'Q:\REPOS\UrbanMorph\data\';
-data_to_load = [get_repo_folder, 'UrbanMorph\sampling_data\'];
+data_to_load = [get_repo_folder, 'UrbanMorph\data_bicentric\'];
 
 % % ****** REMOVE NOT VIABLE RUNS ********
 % badDataDir = 'Q:\REPOS\UrbanMorph\failed_data\';
@@ -32,9 +32,9 @@ items = items([items.isdir]); items = items(~ismember({items.name}, {'.', '..'})
 nFolders = numel(items); % this is the instance folder
 
 nZ = zeros(nFolders,1);
-R_instance = table(nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,...
+R_instance = table(nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,nZ,...
   'VariableNames', {'id','nPax','Pax_maxRadius', 'BS_separation',...
-  'maxWalkingDist', 'FleetSize', 'VehKms', 'VehEmptyKms', 'CusDirectKms', 'CusTravelledKms'});
+  'maxWalkingDist', 'FleetSize', 'VehKms', 'VehEmptyKms', 'CusDirectKms', 'CusTravelledKms','sSeparation'});
 R_bus = table([],[],[],[],[],[],[],[],[],[], 'VariableNames', {'id','nPax','Pax_maxRadius', 'BS_separation','maxWalkingDist',...
   'VehKms','VehEmptyKms', 'CusDirectKms', 'CusTravelledKms','MaxOcc'});
 R_Pax = table([],[],[],[],[],[],[],[],[],[], 'VariableNames', {'id','nPax','Pax_maxRadius', 'BS_separation','maxWalkingDist',...
@@ -82,7 +82,8 @@ for i = 1:nFolders % this is the instance folder
       R_bus(end+1,:) = {i,p.nPax,p.Pax_maxRadius,p.BS_separation,p.maxWalkingDist,sum(this_leg_kms),this_empty_kms,this_direct_kms,this_cus_kms,max(this_leg_occ)}; %#ok<*SAGROW>
 
     end % loop bus routes
-    R_instance{i,:} = [i,p.nPax,p.Pax_maxRadius,p.BS_separation,p.maxWalkingDist,this_fleetSize,total_veh_kms,total_empty_kms,total_direct_kms,total_cus_kms];
+    R_instance{i,:} = [i,p.nPax,p.Pax_maxRadius,p.BS_separation,p.maxWalkingDist,this_fleetSize,total_veh_kms,total_empty_kms,total_direct_kms,total_cus_kms,p.stationSeparation];
   end % instance (non-empty)
 end
 
+save BICENTRIC_PROCESSED

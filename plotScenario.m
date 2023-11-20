@@ -1,4 +1,4 @@
-function fh = plotScenario(T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot)
+function fh = plotScenario(T_Passenger,T_busStop,T_Charger,T_Station,T_depot)
 
 % needs to be based on outputs of
 % [T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot] = ...
@@ -38,19 +38,20 @@ else
   ph = scatter(T_Passenger.passenger_X(pax_ind),T_Passenger.passenger_Y(pax_ind),200,'.');
   ph.MarkerEdgeColor = 'r';
   ph.MarkerFaceColor = 'r';
+  
   legendCell = [legendCell, {'Station',sprintf('Customers [%d]',sum(pax_ind))}];
 end
-
-% charger locations
-ch = scatter(T_Charger.charger_X,T_Charger.charger_Y,80,'filled','^','green');
-nCharger = height(T_Charger);
-legendCell = [legendCell, {sprintf('Chargers [%d]',nCharger)}];
 
 % depot location
 dh = scatter(T_depot.depot_X,T_depot.depot_Y,80,'filled','o','mag');
 dh.MarkerEdgeColor = 'k';
 dh.MarkerFaceColor = 'm';
 legendCell = [legendCell, {'Depot'}];
+
+% charger locations
+ch = scatter(T_Charger.charger_X,T_Charger.charger_Y,80,'filled','^','green');
+nCharger = height(T_Charger);
+legendCell = [legendCell, {sprintf('Chargers [%d]',nCharger)}];
 
 axis equal; legend(legendCell)
 xlabel('X coordinate (km)'); ylabel('Y coordinate (km)')

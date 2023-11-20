@@ -13,7 +13,7 @@ writetable(allStationDeps,[saveFolder '\transitTimetable.csv'],'Delimiter',',');
 writetable(T_depot,[saveFolder '\depotXY.csv'],'Delimiter',',')
 writetable(struct2table(params),[saveFolder '\parameters.csv'],'Delimiter',',');
 
-fh = plotScenario(T_busFleet, T_Passenger,T_busStop,T_Charger,T_Station,allStationDeps,T_depot);
+fh = plotScenario(T_Passenger,T_busStop,T_Charger,T_Station,T_depot);
 fh.Visible = 'off';
 print(fh, [saveFolder,'\',this_instance_folder,'.jpg'], '-djpeg', '-r300');
 close(fh);
