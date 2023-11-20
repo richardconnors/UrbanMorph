@@ -42,7 +42,7 @@ R_Pax = table([],[],[],[],[],[],[],[],[],[], 'VariableNames', {'id','nPax','Pax_
 
 for i = 1:nFolders % this is the instance folder
   thisFolder = [data_to_load, items(i).name, filesep];
-  folderItems = dir(thisFolder); 
+  folderItems = dir(thisFolder);
   allFiles = string({folderItems.name});
 
   cus_file = allFiles(contains(allFiles,'cus_')); route_files =  allFiles(startsWith(allFiles,'route_detail_'));
@@ -70,7 +70,7 @@ for i = 1:nFolders % this is the instance folder
       this_leg_occ = R.num_passenger(1:end-1);
       this_cus_kms = this_leg_kms'*this_leg_occ; % empty bus automatically not counted
       this_empty_kms = this_leg_kms'*~this_leg_occ; % empty bus automatically not counted
-      
+
       C = string(R.cus_set); C = C(~startsWith(C,"Int64")); % extract customer numbers on this bus
       this_bus_cus = cell2mat(cellfun(@str2double, regexp(C(:)', '\d+', 'match'), 'UniformOutput', false));
 
@@ -85,65 +85,4 @@ for i = 1:nFolders % this is the instance folder
     R_instance{i,:} = [i,p.nPax,p.Pax_maxRadius,p.BS_separation,p.maxWalkingDist,this_fleetSize,total_veh_kms,total_empty_kms,total_direct_kms,total_cus_kms];
   end % instance (non-empty)
 end
-return
-
-
-
-% Total veh kms
-figure;
-h1 = scatter3(R_instance.nPax, R_instance.Pax_maxRadius, R_instance.VehEmptyKms);
-hold on
-xlabel('nCustomers'); ylabel('City Radius'); zlabel('KPI')
-% h2 = scatter3(R_instance.nPax, R_instance.Pax_maxRadius, R_instance.VehKms./R_instance.CusDirectKms);
-% legend({'Total Direct Distance','Total Tour Distance'})
-cmap=colormap_generator(2);
-h1.SizeData = 40;
-h1.MarkerFaceColor = cmap(1,:);
-h1.MarkerFaceAlpha = 0.7;
-h2.SizeData = 40;
-h2.MarkerFaceColor = cmap(2,:);
-h2.MarkerFaceAlpha = 0.7;
-
-% relative vehkms compared with taxi
-figure;
-h1 = scatter3(R_instance.nPax, R_instance.Pax_maxRadius, R_instance.VehKms./R_instance.CusDirectKms);
-xlabel('nCustomers'); ylabel('City Radius'); zlabel('KPI')
-title('Veh kms / Direct kms')
-cmap=colormap_generator(2);
-h1.SizeData = 40;
-h1.MarkerFaceColor = cmap(1,:);
-h1.MarkerFaceAlpha = 0.7;
-
-% fleet size
-figure;
-h1 = scatter3(allP.nPax, allP.Pax_maxRadius, this_fleetSize);
-xlabel('nCustomers'); ylabel('City Radius'); zlabel('fleet size')
-cmap=colormap_generator(2);
-h1.SizeData = 40;
-h1.MarkerFaceColor = cmap(1,:);
-h1.MarkerFaceAlpha = 0.7;
-
-fh = boxPlot3D(R_bus.MaxOcc, R_bus.nPax, R_bus.Pax_maxRadius);
-xlabel('nCustomers'); ylabel('City Radius'); zlabel('Occupancy')
-
-fh = boxPlot3D(R_bus.CusTravelledKms./R_bus.VehKms, R_bus.nPax, R_bus.Pax_maxRadius);
-xlabel('nCustomers'); ylabel('City Radius'); zlabel('Bus Utilization Ratio')
-
-% chargeable kms vs bus kms
-fh = boxPlot3D(R_bus.CusDirectKms./R_bus.VehKms, R_bus.nPax, R_bus.Pax_maxRadius);
-xlabel('nCustomers'); ylabel('City Radius'); zlabel('Chargeable Ratio')
-
-% individual passenger experience variability
-this_popRad = R_Pax(and(R_Pax.nPax == 20,R_Pax.Pax_maxRadius == 3),:);
-boxchart(this_popRad.paxID,this_popRad.rideTime)
-xlabel('Customer ID')
-ylabel('Ride Time (minutes)')
-title('Box Plot of Ride Time by Customer ID')
-
-% Sort the ID values by the mean distanceHome in ascending order
-dists = grpstats(this_popRad.CusDirectKms,this_popRad.paxID,'mean')
-[~,idx] = sort(dists,'ascend');
-sorted_ID = this_popRad.paxID(idx);
-boxchart(this_popRad.paxID,this_popRad.rideTime,'XData',idx)
-
 
