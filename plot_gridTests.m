@@ -1,5 +1,4 @@
 load GRIDTESTS_PROCESSED
-% load BICENTRIC_PROCESSED
 % Total veh kms
 figure;
 h1 = scatter3(R_instance.nPax, R_instance.Pax_maxRadius, R_instance.VehEmptyKms);
@@ -53,14 +52,16 @@ for i = 1:numel(cityP)
     thisR = R_Pax(and(R_Pax.nPax == cityP(i),R_Pax.Pax_maxRadius == cityS(j)),:);
 
     subplot(2,3,j)
-    bh = boxchart(thisR.CusDirectKms,thisR.rideTime);
+    bh = boxchart(thisR.CusDirectKms,thisR.rideTime,'Notch','on');
     xlabel('Direct Distance to Transit (km)')
     ylabel('Ride Time (minutes)')
     title(sprintf('Box Plot of Customer Ride Time Variability [#Cus = %d, KM = %03.1f]',cityP(i),cityS(j)))
-    bh.BoxWidth = max(thisR.CusDirectKms)*0.2/30;
+    bh.BoxWidth = max(thisR.CusDirectKms)*0.1/30;
     hold on
-    bh2 = boxchart(thisR.CusDirectKms,thisR.walkTime);
-    bh2.BoxWidth = max(thisR.CusDirectKms)*0.2/30;
+    bh2 = boxchart(thisR.CusDirectKms,thisR.walkTime,'notch','on');
+    bh2.BoxWidth = max(thisR.CusDirectKms)*0.1/30;
+    
+    
     % plot the 0.83 km/min line and the 1.5 multiplier
     uh = line([0,cityS(j)],[0,1.5*cityS(j)./p.busSpeed]);
     uh.LineWidth = 2; uh.Color = 'k'; uh.LineStyle = ":";
@@ -77,6 +78,29 @@ end
 
 
 
+cityS = unique(R_instance.Pax_maxRadius);
+cityP = unique(R_instance.nPax);
+for i = 1:numel(cityP)
+  figure('Units', 'normalized', 'OuterPosition', [0, 0, 1, 1]);;
+  for j= 1:numel(cityS)
+    thisR = R_Pax(and(R_Pax.nPax == cityP(i),R_Pax.Pax_maxRadius == cityS(j)),:);
+    subplot(2,3,j)
+    S = grpstats(thisR,"CusDirectKms",["min","mean","max","std"],"DataVars",["rideTime"]);
+    sh(1) = scatter(S.CusDirectKms,S.min_rideTime); hold on;
+    sh(2) = scatter(S.CusDirectKms,S.mean_rideTime);
+    sh(3) = scatter(S.CusDirectKms,S.max_rideTime);
+%     ind = S.std_rideTime>0
+    sh(4) = scatter(S.CusDirectKms,S.mean_rideTime-S.std_rideTime)
+    sh(5) = scatter(S.CusDirectKms,S.mean_rideTime+S.std_rideTime)
+    h_min.Marker = 'v';
+    h_mean.Marker = 'o';
+    h_max.Marker = '^';
+    h_mean.SizeData = 5;
+    h_min.SizeData = 5;
+    h_max.SizeData = 5;
+
+  end
+end
 % ======================================================
 % ======================================================
 

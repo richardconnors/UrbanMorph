@@ -5,7 +5,7 @@
 % data_to_load = [repo_flexbus, 'results\grid_results_v2\'];
 % data_to_load = 'Q:\REPOS\UrbanMorph\data\';
 
-baseFolderName = 'P050_S1_R30.0_W1.0_MP01.4_SS03.0_DP2.0_r';
+baseFolderName = 'P020_S1_R30.0_W1.0_MP01.4_SS03.0_DP2.0_r';
 for i=1:20
   thisFolderName = [baseFolderName, sprintf('%02d',i)];
 
