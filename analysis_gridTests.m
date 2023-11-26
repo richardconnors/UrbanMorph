@@ -7,7 +7,7 @@
 % repo_flexbus = [get_repo_folder, 'Flexbus3_v0.8.4\'];
 % data_to_load = [repo_flexbus, 'results\grid_results_v2\'];
 % data_to_load = 'Q:\REPOS\UrbanMorph\data\';
-data_to_load = [get_repo_folder, 'UrbanMorph\data_bicentric\'];
+data_to_load = [get_repo_folder, 'UrbanMorph\sampling_80fixed\'];
 
 % % ****** REMOVE NOT VIABLE RUNS ********
 % badDataDir = 'Q:\REPOS\UrbanMorph\failed_data\';
@@ -86,4 +86,4 @@ for i = 1:nFolders % this is the instance folder
   end % instance (non-empty)
 end
 
-save BICENTRIC_PROCESSED
+save FIXED80_PROCESSED
