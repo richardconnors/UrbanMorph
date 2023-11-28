@@ -1,5 +1,5 @@
-% load GRIDTESTS_PROCESSED
-load FIXED80_PROCESSED
+load GRIDTESTS_PROCESSED
+%load FIXED80_PROCESSED
 
 cityS = unique(R_instance.Pax_maxRadius);
 cityP = unique(R_instance.nPax);
@@ -7,15 +7,35 @@ nS = numel(cityS);
 nP = numel(cityP);
 
 
+figure('Units', 'normalized', 'OuterPosition', [0, 0, .95, .95]);
+for i = nS:-1:1
+  thisR = R_instance(R_instance.Pax_maxRadius == cityS(i),:);
+  bh = boxchart(thisR.nPax,thisR.FleetSize);
+  hold on
+  bh.BoxWidth = 10;
+
+%   data = table(thisR.nPax, thisR.FleetSize, 'VariableNames', {'x', 'y'});
+%   linearModel = fitlm(data, 'y ~ x');
+%   disp(linearModel);
+%   h_lm = plot(linearModel, 'DisplayName', 'Fitted Line');
+  
+end
+xlabel('Max Radius of Operational Area (km)')
+ylabel('Fleet Size')
+title(sprintf('Box Plot of Fleet Size Variability'))
+legend(arrayfun(@(n) sprintf('City Radius %d', n), flipud(cityS), 'UniformOutput', false),...
+  'Location','northwest');
+
+
+
 % ============== BUS LEVEL BOXPLOTS ==============
 % how does fleet size vary with population density?
 figure; legendtext = [];
-for i = 1:nP
+for i = nP:-1:1
   thisR = R_bus(R_bus.nPax == cityP(i),:);
   thisArea = (pi*thisR.Pax_maxRadius.^2) - (pi*p.Pax_minRadius.^2);
   bh = boxchart(thisR.nPax./thisArea,thisR.CusDirectKms./thisR.VehKms);
-  bh.BoxWidth = 0.1;
-
+  bh.BoxWidth = .5;
   legendtext = [legendtext;sprintf('nPax = %03d',cityP(i))]; %#ok<*AGROW>
   hold on;
 end
