@@ -8,7 +8,13 @@ for i = nP:-1:1
   thisR = R_instance(R_instance.nPax == cityP(i),:);
   bh = boxchart(thisR.Pax_maxRadius,thisR.FleetSize);
   hold on
-  bh.BoxWidth = 2;
+  bh.BoxWidth = 2; bh.MarkerStyle = 'none';
+
+  yp = polyfit(sqrt(thisR.Pax_maxRadius),thisR.FleetSize,1)
+  xFit = linspace(min(thisR.Pax_maxRadius), max(thisR.Pax_maxRadius), 100);
+  yFit = polyval(yp, sqrt(xFit));
+  fh = plot(xFit, yFit, 'r-', 'HandleVisibility', 'off');
+
 end
 xlabel('Max Radius of Operational Area (km)')
 ylabel('Fleet Size')
@@ -23,6 +29,11 @@ for i = 1:nS
   bh = boxchart(thisR.nPax,thisR.FleetSize);
   hold on
   bh.BoxWidth = 20;
+  yp = polyfit(thisR.nPax,thisR.FleetSize,1)
+  xFit = linspace(min(thisR.nPax), max(thisR.nPax), 100);
+  yFit = polyval(yp, xFit);
+  fh = plot(xFit, yFit, 'r-', 'HandleVisibility', 'off');
+
 end
 xlabel('Number of Customers')
 ylabel('Fleet Size')
